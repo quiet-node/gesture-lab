@@ -26,6 +26,7 @@ import {
   BlendFunction,
   KernelSize,
 } from 'postprocessing';
+import { GravitationalLensingEffect } from './GravitationalLensingEffect';
 
 /**
  * Post-processing configuration
@@ -49,6 +50,9 @@ export interface PostProcessingConfig {
   enableColorGrading: boolean;
   /** Color grading intensity (0-1, default 0.8) */
   colorGradingIntensity: number;
+
+  /** Enable gravitational lensing effect */
+  enableGravitationalLensing: boolean;
 }
 
 /**
@@ -65,6 +69,8 @@ export const DEFAULT_POSTPROCESSING_CONFIG: PostProcessingConfig = {
 
   enableColorGrading: true,
   colorGradingIntensity: 0.8,
+
+  enableGravitationalLensing: true,
 };
 
 /**
@@ -79,6 +85,7 @@ export class PostProcessingManager {
   private bloomEffect: BloomEffect | null = null;
   private chromaticAberrationEffect: ChromaticAberrationEffect | null = null;
   private colorGradingEffect: LUT3DEffect | null = null;
+  private gravitationalLensingEffect: GravitationalLensingEffect | null = null;
 
   // Three.js references (not owned by this manager)
   private scene: THREE.Scene;
@@ -160,6 +167,12 @@ export class PostProcessingManager {
         this.config.colorGradingIntensity;
 
       effects.push(this.colorGradingEffect);
+    }
+
+    // Gravitational Lensing (screen-space distortion)
+    if (this.config.enableGravitationalLensing) {
+      this.gravitationalLensingEffect = new GravitationalLensingEffect();
+      effects.push(this.gravitationalLensingEffect);
     }
 
     // Add all effects to a single pass (more efficient)
@@ -375,6 +388,13 @@ export class PostProcessingManager {
   }
 
   /**
+   * Get gravitational lensing effect for external control
+   */
+  getGravitationalLensingEffect(): GravitationalLensingEffect | null {
+    return this.gravitationalLensingEffect;
+  }
+
+  /**
    * Clean up resources
    */
   dispose(): void {
@@ -392,6 +412,12 @@ export class PostProcessingManager {
     }
     if (this.colorGradingEffect && 'dispose' in this.colorGradingEffect) {
       (this.colorGradingEffect as any).dispose();
+    }
+    if (
+      this.gravitationalLensingEffect &&
+      'dispose' in this.gravitationalLensingEffect
+    ) {
+      (this.gravitationalLensingEffect as any).dispose();
     }
 
     console.log('[PostProcessingManager] Disposed');

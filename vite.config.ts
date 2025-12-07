@@ -10,6 +10,9 @@ export default defineConfig({
     host: true,
   },
 
+  // Asset handling
+  assetsInclude: ['**/*.glsl'],
+
   // Build configuration
   build: {
     target: 'ES2020',

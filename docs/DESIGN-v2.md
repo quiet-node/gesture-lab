@@ -107,60 +107,7 @@ composer.addPass(lutPass);
 
 ## Phase 2: Advanced Cosmic Phenomena (Medium Priority)
 
-### 2.1 Nebula Cloud System (Volumetric Rendering)
-
-**Goal:** Add semi-transparent, colorful clouds using raymarching
-
-**Technical Approach:**
-
-```glsl
-// 3D Perlin noise for nebula
-float noise3D(vec3 p) {
-  // Use built-in Three.js noise or import shader library
-  return snoise(p);
-}
-
-vec4 raymarChNebula(vec3 rayOrigin, vec3 rayDir) {
-  vec3 color = vec3(0.0);
-  float alpha = 0.0;
-
-  // Raymarch steps
-  for(int i = 0; i < 64; i++) {
-    vec3 pos = rayOrigin + rayDir * float(i) * 0.1;
-
-    // Sample 3D noise at multiple octaves
-    float density = noise3D(pos * 2.0) * 0.5 +
-                    noise3D(pos * 4.0) * 0.25;
-
-    // Color gradient based on density
-    vec3 nebulaColor = mix(
-      vec3(0.1, 0.2, 0.8), // Blue
-      vec3(0.8, 0.2, 0.6), // Magenta
-      density
-    );
-
-    // Accumulate color and alpha
-    color += nebulaColor * density * 0.01;
-    alpha += density * 0.01;
-
-    if(alpha > 0.95) break; // Early exit
-  }
-
-  return vec4(color, alpha);
-}
-```
-
-**Optimization:**
-
-- Render at half resolution, then upscale
-- Use 3D texture for noise (pre-computed)
-- Limit raymarch steps to 32-64
-
-**Reference:** [Alan Zucconi Volumetric Rendering](https://www.alanzucconi.com/2017/10/10/atmospheric-scattering-1/)
-
----
-
-### 2.2 Gravitational Lensing Effect
+### Gravitational Lensing Effect
 
 **Goal:** Distort galaxy when hands are very close (pre-explosion tension)
 

@@ -180,6 +180,9 @@ export class HandGalaxyController {
     // Calculate hand distance (normalized coordinates)
     const distance = distance3D(palm1, palm2);
 
+    // Update galaxy renderer with current hand distance for gravitational lensing
+    this.galaxyRenderer.setHandDistance(distance);
+
     // Map distance to scale
     const targetScale = mapDistanceToScale(
       distance,

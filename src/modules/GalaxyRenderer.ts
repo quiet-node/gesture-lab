@@ -13,6 +13,7 @@ import {
   type GalaxyUniforms,
 } from './types/GalaxyTypes';
 import { PostProcessingManager } from './PostProcessingManager';
+// import { NebulaRenderer } from './NebulaRenderer';
 
 // Vertex shader: differential rotation + turbulence + twinkling + EXPLOSION
 const vertexShader = /* glsl */ `
@@ -324,6 +325,9 @@ export class GalaxyRenderer {
   private container: HTMLElement;
   private animationId: number | null = null;
 
+  // Hand distance tracking for gravitational lensing
+  private currentHandDistance: number = 1.0;
+
   // Explosion state tracking
   private explosionState: ExplosionState = ExplosionState.NORMAL;
   private explosionStartTime: number = 0;
@@ -396,13 +400,8 @@ export class GalaxyRenderer {
         chromaticAberrationOffset: 0.001,
         enableColorGrading: true,
         colorGradingIntensity: 0.8,
+        enableGravitationalLensing: true,
       }
-    );
-
-    console.log(
-      '[GalaxyRenderer] Initialized with',
-      this.config.particleCount,
-      'particles and post-processing effects'
     );
   }
 
@@ -607,6 +606,45 @@ export class GalaxyRenderer {
   }
 
   /**
+   * Set current hand distance for gravitational lensing effect
+   * Called by HandGalaxyController with normalized distance (0-1)
+   */
+  setHandDistance(distance: number): void {
+    this.currentHandDistance = distance;
+  }
+
+  /**
+   * Update gravitational lensing effect based on hand distance
+   * Activates when hands are very close (0.06-0.08 range per design)
+   * @private
+   */
+  private updateGravitationalLensing(): void {
+    const lensingEffect = this.postProcessing?.getGravitationalLensingEffect();
+    if (!lensingEffect) return;
+
+    // Lensing activation range (per DESIGN-v2.md Phase 2.2)
+    const minDistance = 0.06; // Below this: explosion triggers
+    const maxDistance = 0.08; // Above this: no lensing
+
+    let intensity = 0.0;
+
+    if (
+      this.currentHandDistance >= minDistance &&
+      this.currentHandDistance <= maxDistance
+    ) {
+      // Map distance to intensity (closer hands = stronger lensing)
+      const normalizedDist =
+        (this.currentHandDistance - minDistance) / (maxDistance - minDistance);
+      intensity = 1.0 - normalizedDist; // Invert: close = 1.0, far = 0.0
+    }
+
+    lensingEffect.setIntensity(intensity);
+
+    // Set lens center to screen center (where galaxy appears)
+    lensingEffect.setLensCenter(new THREE.Vector2(0.5, 0.5));
+  }
+
+  /**
    * Update animation time
    */
   updateTime(deltaTime: number): void {
@@ -621,6 +659,12 @@ export class GalaxyRenderer {
    * Render the scene
    */
   render(): void {
+    const currentTime = performance.now() / 1000;
+    this.updateExplosion(currentTime);
+
+    // Update gravitational lensing based on hand distance
+    this.updateGravitationalLensing();
+
     // Use post-processing if available, otherwise fallback to standard render
     if (this.postProcessing) {
       this.postProcessing.render();
@@ -643,6 +687,15 @@ export class GalaxyRenderer {
     // Resize post-processing composer
     if (this.postProcessing) {
       this.postProcessing.resize(width, height);
+
+      // Update gravitational lensing resolution
+      const lensingEffect = this.postProcessing.getGravitationalLensingEffect();
+      if (lensingEffect) {
+        lensingEffect.setResolution(
+          this.renderer.domElement.width,
+          this.renderer.domElement.height
+        );
+      }
     }
   }
 
