@@ -606,6 +606,13 @@ export class GalaxyRenderer {
   }
 
   /**
+   * Check if galaxy is currently visible
+   */
+  isVisible(): boolean {
+    return this.galaxy?.visible ?? false;
+  }
+
+  /**
    * Set current hand distance for gravitational lensing effect
    * Called by HandGalaxyController with normalized distance (0-1)
    */
@@ -712,6 +719,22 @@ export class GalaxyRenderer {
    */
   getScale(): number {
     return this.uniforms.uScale.value;
+  }
+
+  /**
+   * Get the Three.js scene
+   * Used by HandGalaxyController to initialize Phase 3 effects
+   */
+  getScene(): THREE.Scene {
+    return this.scene;
+  }
+
+  /**
+   * Get the Three.js camera
+   * Used by HandGalaxyController to initialize Phase 3 effects
+   */
+  getCamera(): THREE.Camera {
+    return this.camera;
   }
 
   /**

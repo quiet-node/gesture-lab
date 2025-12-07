@@ -5,6 +5,11 @@
  */
 
 /**
+ * Hand identifier type for gesture attribution
+ */
+export type Handedness = 'left' | 'right' | 'unknown';
+
+/**
  * Normalized landmark coordinates (0-1 range relative to image dimensions)
  */
 export interface NormalizedLandmark {

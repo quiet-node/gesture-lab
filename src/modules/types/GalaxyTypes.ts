@@ -3,6 +3,8 @@
  * Configuration and state types for Three.js WebGL particle system
  */
 
+import * as THREE from 'three';
+
 /**
  * Galaxy explosion states for Big Bang effect
  */
@@ -121,7 +123,7 @@ export const PERFORMANCE_PROFILES: Record<string, PerformanceProfile> = {
  * Uses index signature for Three.js ShaderMaterial compatibility
  */
 export interface GalaxyUniforms {
-  [uniform: string]: { value: number };
+  [uniform: string]: { value: number } | { value: THREE.Vector3 };
   /** Time for animation */
   uTime: { value: number };
   /** Galaxy scale multiplier */

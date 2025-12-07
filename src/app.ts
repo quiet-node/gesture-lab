@@ -100,6 +100,9 @@ export class App {
         this.galaxyRenderer
       );
 
+      // Initialize Phase 3.2 gesture effect (star burst)
+      this.controller.initializeEffects(this.galaxyRenderer.getScene());
+
       // Enable debug if configured
       if (this.config.debug) {
         this.enableDebug();

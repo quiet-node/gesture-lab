@@ -2,6 +2,9 @@
  * HandGalaxyController Module
  * Bridge between hand tracking and galaxy rendering
  * Handles coordinate transformation, smoothing, and interaction logic
+ *
+ * Phase 3.2 Enhancement:
+ * - Pinch gesture → Mini star burst
  */
 
 import * as THREE from 'three';
@@ -11,7 +14,15 @@ import {
 } from '@mediapipe/tasks-vision';
 import { HandTracker } from './HandTracker';
 import { GalaxyRenderer } from './GalaxyRenderer';
+import { GestureDetector } from './GestureDetector';
+import { StarBurstEffect } from './StarBurstEffect';
 import { HandLandmarkIndex } from './types/HandTypes';
+import {
+  GestureState,
+  Handedness,
+  PinchGestureEvent,
+} from './types/GestureTypes';
+import { ExplosionState } from './types/GalaxyTypes';
 import {
   distance3D,
   midpoint3D,
@@ -40,24 +51,34 @@ interface InteractionConfig {
   rotationSmoothingFactor: number;
   /** Grace period in ms to keep galaxy visible after losing hands */
   gracePeriodMs: number;
+  /** Enable Phase 3.2 pinch gesture feature */
+  enableGestures: boolean;
 }
 
 const DEFAULT_INTERACTION_CONFIG: InteractionConfig = {
   minHandDistance: 0.06,
   maxHandDistance: 0.35,
-  scaleSmoothingFactor: 0.2, // Smooth resizing - eliminates jitter
-  positionSmoothingFactor: 0.25, // Smooth positioning - stable movement
-  rotationSmoothingFactor: 0.2, // Fast rotation
+  scaleSmoothingFactor: 0.2, // Smooth resizing
+  positionSmoothingFactor: 0.25, // Smooth positioning
+  rotationSmoothingFactor: 0.2, // Smooth rotation
   gracePeriodMs: 500,
+  enableGestures: true, // Phase 3.2: Pinch → Star Burst
 };
 
 /**
  * HandGalaxyController - Manages interaction between hands and galaxy
+ *
+ * Phase 3.2 Feature:
+ * - Pinch: Thumb+Index pinch triggers star burst effect
  */
 export class HandGalaxyController {
   private handTracker: HandTracker;
   private galaxyRenderer: GalaxyRenderer;
   private config: InteractionConfig;
+
+  // Phase 3.2: Gesture detection and effects
+  private gestureDetector: GestureDetector;
+  private starBurstEffect: StarBurstEffect | null = null;
 
   // Smoothers for stable tracking
   private scaleSmoother: ScalarSmoother;
@@ -124,6 +145,35 @@ export class HandGalaxyController {
       new THREE.Euler(0, 0, 0),
       this.config.rotationSmoothingFactor
     );
+
+    // Phase 3.2: Initialize gesture detector
+    this.gestureDetector = new GestureDetector();
+  }
+
+  /**
+   * Initialize Phase 3.2 star burst effect (must be called after GalaxyRenderer.initialize())
+   * This sets up the StarBurst effect in the scene
+   *
+   * @param scene - Three.js scene from GalaxyRenderer
+   */
+  initializeEffects(scene: THREE.Scene): void {
+    if (!this.config.enableGestures) return;
+
+    // Initialize star burst effect for pinch gesture
+    this.starBurstEffect = new StarBurstEffect(
+      scene,
+      {
+        particleCount: 300, // Optimized particle count
+        duration: 1.5,
+        initialVelocity: 2.5,
+        color: new THREE.Color(0xffffff),
+      },
+      3
+    ); // Max 3 concurrent bursts
+
+    console.log(
+      '[HandGalaxyController] Phase 3.2 star burst effect initialized'
+    );
   }
 
   /**
@@ -139,6 +189,11 @@ export class HandGalaxyController {
     // Update galaxy animation time
     this.galaxyRenderer.updateTime(deltaTime);
 
+    // Update Phase 3.2 star burst effect
+    if (this.config.enableGestures && this.starBurstEffect) {
+      this.starBurstEffect.update(deltaTime);
+    }
+
     // Detect hands
     const result = this.handTracker.detectHands(timestamp);
 
@@ -150,13 +205,67 @@ export class HandGalaxyController {
       // Two hands detected
       this.lastHandsDetectedTime = timestamp;
       this.processHandInteraction(result, timestamp);
+
+      // Phase 3.2: Process gestures only when galaxy is active (two hands)
+      if (this.config.enableGestures) {
+        this.processGestures(result, timestamp);
+      }
+    } else if (result && result.landmarks.length === 1) {
+      // Single hand - treat as no hands (galaxy needs two hands)
+      this.handleNoHands(timestamp);
     } else {
-      // Less than two hands - check grace period
+      // No hands detected - check grace period
       this.handleNoHands(timestamp);
     }
 
     // Render the galaxy
     this.galaxyRenderer.render();
+  }
+
+  /**
+   * Process Phase 3.2 gesture (pinch only)
+   */
+  private processGestures(
+    result: HandLandmarkerResult,
+    timestamp: number
+  ): void {
+    // Extract handedness from result
+    const handedness: Handedness[] = result.handedness.map((h) => {
+      const category = h[0]?.categoryName?.toLowerCase();
+      return category === 'left' || category === 'right' ? category : 'unknown';
+    });
+
+    // Run gesture detection
+    const gestureResult = this.gestureDetector.detect(
+      result.landmarks,
+      handedness,
+      timestamp
+    );
+
+    // Process pinch gesture → Star Burst (Phase 3.2)
+    if (gestureResult.pinch) {
+      this.handlePinchGesture(gestureResult.pinch);
+    }
+  }
+
+  /**
+   * Handle pinch gesture - trigger star burst effect
+   * Per DESIGN-v2.md Phase 3.2
+   * Only triggers when galaxy is visible, active, and in normal state (not exploding)
+   */
+  private handlePinchGesture(event: PinchGestureEvent): void {
+    if (
+      event.state === GestureState.STARTED &&
+      this.starBurstEffect &&
+      this.isGalaxyActive &&
+      this.galaxyRenderer.isVisible() &&
+      this.galaxyRenderer.getExplosionState() === ExplosionState.NORMAL
+    ) {
+      console.log(
+        `[HandGalaxyController] Pinch detected (${event.data.handedness}) - triggering star burst`
+      );
+      this.starBurstEffect.trigger(event.data.position);
+    }
   }
 
   /**
@@ -411,13 +520,19 @@ export class HandGalaxyController {
     this.isGalaxyActive = false;
     this.galaxyRenderer.setVisible(false);
     this.galaxyRenderer.setScale(0);
+
+    // Reset Phase 3.2 components
+    this.gestureDetector.reset();
+    this.starBurstEffect?.clear();
   }
 
   /**
    * Clean up resources
    */
   dispose(): void {
-    // No additional cleanup needed - smoothers are plain objects
+    // Clean up Phase 3.2 star burst effect
+    this.starBurstEffect?.dispose();
+    this.starBurstEffect = null;
   }
 }
 
