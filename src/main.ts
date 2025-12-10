@@ -26,10 +26,13 @@ if (!container) {
   throw new Error('Container element #app not found');
 }
 
+// Check if mobile device
+const isMobile = window.innerWidth < 768;
+
 // Create and start application
 const app = new App(container, {
   debug: false, // Set to true for debug panel
-  particleCount: 20000,
+  particleCount: isMobile ? 8000 : 20000,
 });
 
 // Start the application

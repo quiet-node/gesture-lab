@@ -6,10 +6,18 @@
 export class StatusIndicator {
   private container: HTMLElement;
   private element: HTMLElement | null = null;
+  private clickHandler: (() => void) | null = null;
 
   constructor(container: HTMLElement) {
     this.container = container;
     this.createDOM();
+  }
+
+  onClick(handler: () => void): void {
+    this.clickHandler = handler;
+    if (this.element) {
+      this.element.style.cursor = 'pointer';
+    }
   }
 
   update(
@@ -40,6 +48,7 @@ export class StatusIndicator {
         box-shadow: 0 0 8px ${stateColors[state]};
       "></span>
       <span style="letter-spacing: 0.02em;">${message}</span>
+      <span class="debug-hint" style="margin-left: 4px; opacity: 0.5; font-size: 0.7em;">[D]</span>
     `;
 
     // We need to preserve the style element, so we only update the content div
@@ -69,11 +78,21 @@ export class StatusIndicator {
     this.element.innerHTML =
       '<div class="status-content" style="display: flex; align-items: center; gap: 8px;"></div>';
 
+    if (this.clickHandler) {
+      this.element.style.cursor = 'pointer';
+    }
+
+    this.element.addEventListener('click', () => {
+      if (this.clickHandler) {
+        this.clickHandler();
+      }
+    });
+
     const style = document.createElement('style');
     style.textContent = `
       .status-indicator {
         position: absolute;
-        bottom: 20px;
+        bottom: 30px; /* Aligned with footer on desktop */
         left: 20px;
         padding: 8px 10px; /* Reduced horizontal padding */
         background: rgba(20, 20, 25, 0.6);
@@ -90,6 +109,21 @@ export class StatusIndicator {
         box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
         border: 1px solid rgba(255, 255, 255, 0.08);
         transition: all 0.3s ease;
+      }
+
+      .status-indicator:active {
+        transform: scale(0.95);
+        background: rgba(30, 30, 35, 0.8);
+      }
+
+      @media (max-width: 768px) {
+        .status-indicator {
+          bottom: 50px; /* Higher than footer on mobile */
+          left: 10px;
+          padding: 6px 10px;
+          font-size: 0.75rem;
+        }
+        .debug-hint { display: none !important; }
       }
     `;
 

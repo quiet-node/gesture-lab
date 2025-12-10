@@ -56,6 +56,18 @@ export class Footer {
         letter-spacing: 0.05em;
       }
 
+      @media (max-width: 768px) {
+        .app-footer {
+          bottom: 20px;
+          width: 100%;
+          text-align: center;
+        }
+        .app-footer a {
+          padding: 6px 10px;
+          font-size: 0.75rem;
+        }
+      }
+
       .app-footer a:hover {
         background: rgba(255, 255, 255, 0.08);
         border-color: rgba(255, 255, 255, 0.2);

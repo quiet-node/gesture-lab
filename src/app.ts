@@ -169,12 +169,27 @@ export class App {
 
     // Hint Component
     this.hintComponent = new HintComponent(this.container);
+    this.hintComponent.onAction((action) => {
+      if (action === 'reset') {
+        this.resetFoggyMirror();
+      }
+    });
 
     // Mode Indicator
     this.modeIndicator = new ModeIndicator(this.container);
+    this.modeIndicator.onClick(() => {
+      if (this.currentMode === 'galaxy') {
+        this.switchToFoggyMirrorMode();
+      } else {
+        this.switchToGalaxyMode();
+      }
+    });
 
     // Status Indicator
     this.statusIndicator = new StatusIndicator(this.container);
+    this.statusIndicator.onClick(() => {
+      this.toggleDebug();
+    });
 
     // Debug Component
     this.debugComponent = new DebugComponent(this.container);

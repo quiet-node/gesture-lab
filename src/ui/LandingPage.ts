@@ -285,9 +285,23 @@ export class LandingPage {
       }
 
       @media (max-width: 600px) {
+        .landing-container {
+          padding: 2rem 1rem;
+          gap: 1.5rem;
+        }
         .app-title { font-size: 2.5rem; }
-        .portal-card { flex-direction: column; align-items: flex-start; gap: 1rem; }
-        .portal-footer { margin-left: 0; width: 100%; justify-content: flex-end; }
+        .app-subtitle { font-size: 0.9rem; }
+        .portals-container { gap: 1rem; }
+        .portal-card { 
+          flex-direction: column; 
+          align-items: flex-start; 
+          gap: 0.5rem;
+          padding: 1.2rem;
+          min-height: auto;
+        }
+        .portal-title { font-size: 1.2rem; }
+        .portal-desc { font-size: 0.85rem; }
+        .portal-footer { display: none; }
       }
     `;
     this.element.appendChild(style);

@@ -6,9 +6,17 @@
 export class ModeIndicator {
   private container: HTMLElement;
   private element: HTMLElement | null = null;
+  private clickHandler: (() => void) | null = null;
 
   constructor(container: HTMLElement) {
     this.container = container;
+  }
+
+  onClick(handler: () => void): void {
+    this.clickHandler = handler;
+    if (this.element) {
+      this.element.style.cursor = 'pointer';
+    }
   }
 
   update(mode: 'galaxy' | 'foggy-mirror'): void {
@@ -24,12 +32,14 @@ export class ModeIndicator {
     if (mode === 'galaxy') {
       content.innerHTML = `
         <div class="current-mode">Interactive Galaxy</div>
-        <div class="switch-hint">Press <kbd>F</kbd> for Foggy Mirror</div>
+        <div class="switch-hint desktop-hint">Press <kbd>F</kbd> for Foggy Mirror</div>
+        <div class="switch-hint mobile-hint">Tap to Switch Mode</div>
       `;
     } else {
       content.innerHTML = `
         <div class="current-mode">Foggy Mirror</div>
-        <div class="switch-hint">Press <kbd>G</kbd> for Interactive Galaxy</div>
+        <div class="switch-hint desktop-hint">Press <kbd>G</kbd> for Interactive Galaxy</div>
+        <div class="switch-hint mobile-hint">Tap to Switch Mode</div>
       `;
     }
   }
@@ -40,6 +50,16 @@ export class ModeIndicator {
     this.element.innerHTML = `
       <div class="mode-content"></div>
     `;
+
+    if (this.clickHandler) {
+      this.element.style.cursor = 'pointer';
+    }
+
+    this.element.addEventListener('click', () => {
+      if (this.clickHandler) {
+        this.clickHandler();
+      }
+    });
 
     const style = document.createElement('style');
     style.textContent = `
@@ -58,6 +78,24 @@ export class ModeIndicator {
         box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
         border: 1px solid rgba(255, 255, 255, 0.08);
         min-width: 160px;
+        transition: transform 0.2s ease, background 0.2s ease;
+      }
+
+      .mode-indicator:active {
+        transform: scale(0.98);
+        background: rgba(30, 30, 35, 0.8);
+      }
+
+      @media (max-width: 768px) {
+        .mode-indicator {
+          top: 10px;
+          left: 10px;
+          padding: 8px 12px;
+          min-width: 0;
+        }
+        .current-mode { font-size: 0.85rem; margin-bottom: 0; }
+        .desktop-hint { display: none !important; }
+        .mobile-hint { display: flex !important; }
       }
 
       .current-mode {
@@ -77,6 +115,10 @@ export class ModeIndicator {
         display: flex;
         align-items: center;
         gap: 6px;
+      }
+
+      .mobile-hint {
+        display: none;
       }
 
       .switch-hint kbd {
