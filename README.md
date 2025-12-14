@@ -44,6 +44,9 @@ Slice through cosmic objects with lightsaber hands in this high-energy arcade mo
 - [Design Document](docs/DESIGN-COSMIC-SLASH.md)
 
 
+https://github.com/user-attachments/assets/6410fd2d-ea70-4f16-8bf9-df84b9cc1e59
+
+
 
 ## 🚀 Quick Start
 
