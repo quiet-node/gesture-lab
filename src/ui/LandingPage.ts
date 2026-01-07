@@ -3,7 +3,11 @@
  * Displays the initial mode selection screen
  */
 
-export type InteractionMode = 'galaxy' | 'foggy-mirror' | 'cosmic-slash';
+export type InteractionMode =
+  | 'galaxy'
+  | 'foggy-mirror'
+  | 'cosmic-slash'
+  | 'hologram';
 
 export class LandingPage {
   private container: HTMLElement;
@@ -64,6 +68,17 @@ export class LandingPage {
             </div>
             <div class="portal-footer">
               <span class="key-hint">Press <kbd>C</kbd></span>
+            </div>
+            <div class="portal-bg"></div>
+          </button>
+          
+          <button class="portal-card hologram-portal" data-mode="hologram">
+            <div class="portal-content">
+              <h2 class="portal-title">Iron Man Hologram</h2>
+              <p class="portal-desc">Futuristic holographic interface overlay</p>
+            </div>
+            <div class="portal-footer">
+              <span class="key-hint">Press <kbd>I</kbd></span>
             </div>
             <div class="portal-bg"></div>
           </button>
@@ -203,6 +218,10 @@ export class LandingPage {
 
       .slash-portal .portal-bg {
         background: linear-gradient(90deg, rgba(255, 100, 100, 0.1), transparent);
+      }
+
+      .hologram-portal .portal-bg {
+        background: linear-gradient(90deg, rgba(0, 255, 255, 0.1), transparent);
       }
 
       .portal-card:hover {

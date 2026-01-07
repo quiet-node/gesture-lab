@@ -13,6 +13,8 @@ import {
 } from './interactive-galaxy/HandGalaxyController';
 import { CosmicSlashController } from './cosmic-slash/CosmicSlashController';
 import { CosmicSlashDebugInfo } from './cosmic-slash/types';
+import { HologramController } from './hologram/HologramController';
+import { HologramDebugInfo } from './hologram/types';
 import { HandTracker } from './shared/HandTracker';
 import { DebugComponent } from './ui/DebugComponent';
 import { Footer } from './ui/Footer';
@@ -56,6 +58,7 @@ export class App {
   private controller: HandGalaxyController | null = null;
   private foggyMirrorController: FoggyMirrorController | null = null;
   private cosmicSlashController: CosmicSlashController | null = null;
+  private hologramController: HologramController | null = null;
   private config: AppConfig;
   private currentMode: InteractionMode | null = null;
 
@@ -166,6 +169,8 @@ export class App {
         this.switchToFoggyMirrorMode();
       } else if (mode === 'cosmic-slash') {
         this.switchToCosmicSlashMode();
+      } else if (mode === 'hologram') {
+        this.switchToHologramMode();
       }
     });
 
@@ -236,6 +241,9 @@ export class App {
       } else if (key === 'c') {
         this.switchToCosmicSlashMode();
         return;
+      } else if (key === 'i') {
+        this.switchToHologramMode();
+        return;
       }
 
       // Mode specific shortcuts
@@ -247,6 +255,8 @@ export class App {
           this.cosmicSlashController?.reset();
         } else if (this.currentMode === 'galaxy') {
           this.controller?.reset();
+        } else if (this.currentMode === 'hologram') {
+          this.hologramController?.reset();
         }
         return;
       }
@@ -301,6 +311,14 @@ export class App {
       this.cosmicSlashController.disableDebug();
       this.cosmicSlashController.dispose();
       this.cosmicSlashController = null;
+    }
+
+    // Stop hologram controller
+    if (this.hologramController) {
+      this.hologramController.stop();
+      this.hologramController.disableDebug();
+      this.hologramController.dispose();
+      this.hologramController = null;
     }
 
     this.showLandingPage();
@@ -388,6 +406,10 @@ export class App {
     ) {
       this.cosmicSlashController.enableDebug((info) =>
         this.updateCosmicSlashDebugPanel(info)
+      );
+    } else if (this.currentMode === 'hologram' && this.hologramController) {
+      this.hologramController.enableDebug((info) =>
+        this.updateHologramDebugPanel(info)
       );
     }
   }
@@ -484,6 +506,9 @@ export class App {
       } else if (this.currentMode === 'cosmic-slash') {
         const handCount = this.cosmicSlashController?.getHandCount() ?? 0;
         this.updateHandStatus(handCount);
+      } else if (this.currentMode === 'hologram') {
+        const handCount = this.hologramController?.getHandCount() ?? 0;
+        this.updateHandStatus(handCount);
       }
       // Note: foggy-mirror mode has its own update loop in FoggyMirrorController
 
@@ -515,6 +540,7 @@ export class App {
       this.controller?.disableDebug();
       this.foggyMirrorController?.disableDebug();
       this.cosmicSlashController?.disableDebug();
+      this.hologramController?.disableDebug();
     } else {
       if (this.currentMode === 'galaxy' && this.controller) {
         this.controller.enableDebug((info) =>
@@ -533,6 +559,10 @@ export class App {
       ) {
         this.cosmicSlashController.enableDebug((info) =>
           this.updateCosmicSlashDebugPanel(info)
+        );
+      } else if (this.currentMode === 'hologram' && this.hologramController) {
+        this.hologramController.enableDebug((info) =>
+          this.updateHologramDebugPanel(info)
         );
       }
     }
@@ -571,6 +601,10 @@ export class App {
       // Dim video for cosmic slash (cosmic background effect)
       this.videoElement.style.cssText =
         baseStyles + 'filter: brightness(0.25) contrast(0.7) saturate(0.8);';
+    } else if (mode === 'hologram') {
+      // Slight dim for hologram mode to make glowing elements more visible
+      this.videoElement.style.cssText =
+        baseStyles + 'filter: brightness(0.4) contrast(0.9) saturate(0.8);';
     } else {
       // Full brightness for foggy-mirror mode
       this.videoElement.style.cssText = baseStyles + 'filter: none;';
@@ -807,6 +841,102 @@ export class App {
   }
 
   /**
+   * Switch to hologram interaction mode
+   */
+  switchToHologramMode(): void {
+    if (this.currentMode === 'hologram') return;
+
+    console.log('[App] Switching to hologram mode');
+
+    // Hide landing page
+    this.landingPage?.hide();
+
+    // Stop galaxy mode
+    if (this.galaxyRenderer) {
+      this.galaxyRenderer.hide();
+      this.galaxyRenderer.dispose();
+      this.galaxyRenderer = null;
+    }
+    if (this.controller) {
+      this.controller.dispose();
+      this.controller = null;
+    }
+
+    // Stop foggy-mirror controller
+    if (this.foggyMirrorController) {
+      this.foggyMirrorController.stop();
+      this.foggyMirrorController.disableDebug();
+      this.foggyMirrorController.dispose();
+      this.foggyMirrorController = null;
+    }
+
+    // Stop cosmic slash controller
+    if (this.cosmicSlashController) {
+      this.cosmicSlashController.stop();
+      this.cosmicSlashController.disableDebug();
+      this.cosmicSlashController.dispose();
+      this.cosmicSlashController = null;
+    }
+
+    // Initialize hologram controller if needed
+    if (!this.hologramController) {
+      this.updateStatus('Loading Hologram...', 'loading');
+      this.hologramController = new HologramController(
+        this.handTracker,
+        this.container,
+        { debug: this.config.debug }
+      );
+      this.hologramController.initialize();
+    }
+
+    // Start hologram controller
+    this.hologramController.start();
+
+    // Apply video styles - show webcam behind hologram
+    this.applyVideoStyles('hologram');
+
+    // Update mode
+    this.currentMode = 'hologram';
+    this.state = 'running';
+    this.updateHandStatus(0);
+
+    // Show UI elements
+    this.statusIndicator?.show();
+    this.footer?.show();
+    this.hintComponent?.update('hologram');
+    this.hintComponent?.show();
+    this.modeIndicator?.update('hologram');
+
+    // Start loop
+    this.startAnimationLoop();
+
+    // Re-enable debug if it was active
+    if (this.debugComponent?.isVisibleState()) {
+      this.hologramController.enableDebug((info) =>
+        this.updateHologramDebugPanel(info)
+      );
+    }
+  }
+
+  /**
+   * Update hologram debug panel with current info
+   */
+  private updateHologramDebugPanel(info: HologramDebugInfo): void {
+    if (!this.debugComponent) return;
+
+    this.debugComponent.update(`
+      <div style="margin-bottom: 8px; color: #fff; font-weight: bold;">Debug Info</div>
+      <div>FPS: ${info.fps.toFixed(1)}</div>
+      <div>Hands: ${info.handsDetected}</div>
+      <div>Grabbing: ${
+        info.isGrabbing ? '<span style="color: #0ff;">YES</span>' : 'No'
+      }</div>
+      <div>Active Elements: ${info.activeElements}</div>
+      <div>Bloom: ${info.bloomEnabled ? 'ON' : 'OFF'}</div>
+    `);
+  }
+
+  /**
    * Clean up and stop the application
    */
   dispose(): void {
@@ -822,6 +952,7 @@ export class App {
     this.controller?.dispose();
     this.foggyMirrorController?.dispose();
     this.cosmicSlashController?.dispose();
+    this.hologramController?.dispose();
     this.handTracker.dispose();
     this.galaxyRenderer?.dispose();
 

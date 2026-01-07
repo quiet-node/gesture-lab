@@ -17,7 +17,7 @@ export class HintComponent {
     this.actionHandler = handler;
   }
 
-  update(mode: 'galaxy' | 'foggy-mirror' | 'cosmic-slash'): void {
+  update(mode: 'galaxy' | 'foggy-mirror' | 'cosmic-slash' | 'hologram'): void {
     if (!this.element) {
       this.createDOM();
     }
@@ -51,6 +51,17 @@ export class HintComponent {
           <div class="hint-item">Show both hands for POW beam</div>
           <div class="hint-item">Press <kbd>Space</kbd> to pause/resume</div>
           <div class="hint-item">Press <kbd>R</kbd> to restart</div>
+        </div>
+      `;
+    } else if (mode === 'hologram') {
+      content.innerHTML = `
+        <div class="hint-header">
+          <span class="hint-title">Guide</span>
+        </div>
+        <div class="hint-list">
+          <div class="hint-item">Grab body to rotate</div>
+          <div class="hint-item">Grab arms/legs to pose</div>
+          <div class="hint-item">Press <kbd>R</kbd> to reset</div>
         </div>
       `;
     } else {
