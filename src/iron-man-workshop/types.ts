@@ -43,6 +43,8 @@ export interface WorkshopDebugInfo {
   bloomEnabled: boolean;
   isGrabbing: boolean;
   isHovering: boolean;
-  /** Current grab target: 'body' or null */
+  /** Current grab target: 'body' | 'arm_left' | 'arm_right' | 'leg_left' | 'leg_right' | null */
   grabTarget: string | null;
+  /** Currently hovered limb name or null */
+  hoveredLimb: string | null;
 }

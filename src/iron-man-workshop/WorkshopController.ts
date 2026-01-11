@@ -37,6 +37,9 @@ import {
 import {
   loadMarkVIModel,
   updateMarkVIModelCached,
+  LimbName,
+  LimbReference,
+  LIMB_NAMES,
 } from './components/MarkVIModel';
 import { HandLandmarkOverlay } from './components/HandLandmarkOverlay';
 
@@ -79,24 +82,29 @@ export class WorkshopController {
     number,
     {
       isGrabbing: boolean;
-      grabTarget: 'body' | null;
+      grabTarget: 'body' | LimbName | null;
       grabStartHandPosition: THREE.Vector3 | null;
       grabStartRotation: THREE.Euler;
-      lastHandPosition: THREE.Vector3 | null; // For incremental delta
-      // Per-hand raycast throttling state
+      lastHandPosition: THREE.Vector3 | null;
       lastRaycastTime: number;
       cachedIntersects: THREE.Intersection[];
     }
   > = new Map();
   private schematicTargetRotation: THREE.Euler = new THREE.Euler(
     0,
-    -Math.PI / 2, // Start facing camera
+    -Math.PI / 2,
     0
   );
 
   // Hover state for visual feedback
   private isHoveringSchematic: boolean = false;
-  private hoverIntensity: number = 0; // 0-1, used for smooth glow transition
+  private hoverIntensity: number = 0;
+
+  // Limb articulation state
+  private limbRefs: Map<LimbName, LimbReference> = new Map();
+  private limbHoverIntensities: Map<LimbName, number> = new Map();
+  private limbTargetRotations: Map<LimbName, THREE.Euler> = new Map();
+  private hoveredLimb: LimbName | null = null;
 
   // Inertia state
   private rotationVelocity: { x: number; y: number } = { x: 0, y: 0 };
@@ -104,13 +112,17 @@ export class WorkshopController {
   private raycaster: THREE.Raycaster = new THREE.Raycaster();
 
   // Performance optimization: Raycaster throttling
-  private readonly RAYCAST_INTERVAL_MS: number = 100; // 10Hz raycasting
+  private readonly RAYCAST_INTERVAL_MS: number = 100;
 
   // Performance optimization: Cached schematic shader meshes
   private schematicShaderMeshes: THREE.Mesh<
     THREE.BufferGeometry,
     THREE.ShaderMaterial
   >[] = [];
+
+  // Performance optimization: Object pooling (zero allocations in hot paths)
+  private readonly _tempVec2 = new THREE.Vector2();
+  private readonly _tempVec3 = new THREE.Vector3();
 
   constructor(
     handTracker: HandTracker,
@@ -258,7 +270,11 @@ export class WorkshopController {
 
     // Central holographic model (GLB)
     const scale = 3.0;
-    const { group: modelGroup, loadPromise } = loadMarkVIModel({
+    const {
+      group: modelGroup,
+      loadPromise,
+      limbs,
+    } = loadMarkVIModel({
       color: secondaryColor,
       scale,
     });
@@ -268,10 +284,22 @@ export class WorkshopController {
     this.schematic.rotation.y = -Math.PI / 2; // Face camera
     this.scene.add(this.schematic);
 
-    // Cache shader meshes after model loads
+    // Enable camera to see limb hit volumes on layer 1
+    this.camera.layers.enable(1);
+
+    // Cache shader meshes and limb references after model loads
     loadPromise
       .then(() => {
         this.cacheSchematicShaderMeshes();
+        // Copy limb references and initialize state
+        for (const [limbName, limbRef] of limbs) {
+          this.limbRefs.set(limbName, limbRef);
+          this.limbHoverIntensities.set(limbName, 0);
+          this.limbTargetRotations.set(limbName, limbRef.mesh.rotation.clone());
+        }
+        console.log(
+          `[WorkshopController] Initialized ${this.limbRefs.size} limbs for articulation`
+        );
       })
       .catch((error) => {
         console.error('[WorkshopController] Model load failed:', error);
@@ -476,12 +504,9 @@ export class WorkshopController {
       const palmX = (wrist.x + indexBase.x) / 2;
       const palmY = (wrist.y + indexBase.y) / 2;
 
-      // Convert normalized coordinates to 3D world space
-      const handPosition = new THREE.Vector3(
-        (0.5 - palmX) * 6,
-        (0.5 - palmY) * 4,
-        0
-      );
+      // Convert normalized coordinates to 3D world space (use pooled vector)
+      this._tempVec3.set((0.5 - palmX) * 6, (0.5 - palmY) * 4, 0);
+      const handPosition = this._tempVec3;
 
       // Calculate pinch distance
       const pinchDistance = Math.sqrt(
@@ -521,48 +546,28 @@ export class WorkshopController {
             const ndcX = (1 - pinchMidX) * 2 - 1;
             const ndcY = -(pinchMidY * 2 - 1);
 
-            this.raycaster.setFromCamera(
-              new THREE.Vector2(ndcX, ndcY),
-              this.camera
-            );
+            // Use pooled Vector2 for raycaster
+            this._tempVec2.set(ndcX, ndcY);
+            this.raycaster.setFromCamera(this._tempVec2, this.camera);
 
-            // Performance optimization: Raycast against hit volume only (not full model)
-            // This avoids expensive recursive triangle intersection tests on complex GLB
-            const hitVolume = this.schematic.userData.hitVolume as
-              | THREE.Mesh
-              | undefined;
-            const intersects = hitVolume
-              ? this.raycaster.intersectObject(hitVolume, false)
-              : [];
-
-            // Check if we hit the body
+            // Check limbs FIRST (before body) to ensure precise limb targeting
+            // Limbs are smaller hit volumes that should take priority
             let foundTarget = false;
-            if (intersects.length > 0) {
-              for (const intersection of intersects) {
-                const hitObject = intersection.object;
-                const userData = hitObject.userData as
-                  | { isHitVolume?: boolean; limbType?: string }
-                  | undefined;
 
-                // Body grab if we hit hitVolume or schematic child (without limbType)
-                // Note: limbType check is legacy/safety, but new model won't have it
-                const isBodyHitVolume =
-                  userData?.isHitVolume === true && !userData?.limbType;
-                const isBodyMesh =
-                  hitObject instanceof THREE.Mesh &&
-                  hitObject.parent === this.schematic;
-
-                if (isBodyHitVolume || isBodyMesh) {
-                  // === BODY GRAB ===
+            if (this.limbRefs.size > 0) {
+              for (const [limbName, limbRef] of this.limbRefs) {
+                const limbIntersects = this.raycaster.intersectObject(
+                  limbRef.hitVolume,
+                  false
+                );
+                if (limbIntersects.length > 0) {
+                  // === LIMB GRAB ===
                   handState.isGrabbing = true;
-                  handState.grabTarget = 'body';
+                  handState.grabTarget = limbName;
                   handState.grabStartHandPosition = handPosition.clone();
-                  handState.grabStartRotation.copy(this.schematic.rotation);
-                  // Reset velocity on new grab
-                  this.rotationVelocity = { x: 0, y: 0 };
-
+                  handState.grabStartRotation.copy(limbRef.mesh.rotation);
                   console.log(
-                    `[HologramController] Hand ${handIndex} grabbed body`
+                    `[WorkshopController] Hand ${handIndex} grabbed limb: ${limbName}`
                   );
                   foundTarget = true;
                   anyHandHovering = true;
@@ -571,8 +576,29 @@ export class WorkshopController {
               }
             }
 
-            if (foundTarget) {
-              anyHandHovering = true;
+            // Fall back to body grab if no limb was hit
+            if (!foundTarget) {
+              const hitVolume = this.schematic.userData.hitVolume as
+                | THREE.Mesh
+                | undefined;
+              const intersects = hitVolume
+                ? this.raycaster.intersectObject(hitVolume, false)
+                : [];
+
+              if (intersects.length > 0) {
+                // === BODY GRAB ===
+                handState.isGrabbing = true;
+                handState.grabTarget = 'body';
+                handState.grabStartHandPosition = handPosition.clone();
+                handState.grabStartRotation.copy(this.schematic.rotation);
+                this.rotationVelocity = { x: 0, y: 0 };
+
+                console.log(
+                  `[WorkshopController] Hand ${handIndex} grabbed body`
+                );
+                foundTarget = true;
+                anyHandHovering = true;
+              }
             }
           }
         } else {
@@ -614,6 +640,52 @@ export class WorkshopController {
               this.rotationVelocity.y =
                 this.rotationVelocity.y * 0.7 + currentVelY * 0.3;
             }
+          } else if (
+            handState.grabTarget &&
+            handState.grabTarget !== 'body' &&
+            handState.grabStartHandPosition
+          ) {
+            // === LIMB ROTATION ===
+            const limbRef = this.limbRefs.get(handState.grabTarget as LimbName);
+            if (limbRef) {
+              const deltaX = handPosition.x - handState.grabStartHandPosition.x;
+              const deltaY = handPosition.y - handState.grabStartHandPosition.y;
+
+              // Update limb target rotation
+              let targetRot = this.limbTargetRotations.get(
+                handState.grabTarget as LimbName
+              );
+              if (!targetRot) {
+                targetRot = limbRef.mesh.rotation.clone();
+                this.limbTargetRotations.set(
+                  handState.grabTarget as LimbName,
+                  targetRot
+                );
+              }
+
+              // Map hand movement to limb rotation
+              // Hand left/right → limb Y rotation (natural arm swing)
+              // Hand up/down → limb X rotation (forward/back tilt)
+              // Note: deltaX is inverted because hand X is mirrored from user perspective
+              targetRot.y = handState.grabStartRotation.y - deltaX * 1.5;
+              targetRot.x = handState.grabStartRotation.x - deltaY * 1.2;
+
+              // Clamp to realistic joint limits
+              targetRot.x = Math.max(
+                -Math.PI / 3,
+                Math.min(Math.PI / 3, targetRot.x)
+              );
+              targetRot.y = Math.max(
+                -Math.PI / 2,
+                Math.min(Math.PI / 2, targetRot.y)
+              );
+
+              // Apply rotation smoothly
+              limbRef.mesh.rotation.x +=
+                (targetRot.x - limbRef.mesh.rotation.x) * 0.15;
+              limbRef.mesh.rotation.y +=
+                (targetRot.y - limbRef.mesh.rotation.y) * 0.15;
+            }
           }
         }
       } else {
@@ -630,41 +702,67 @@ export class WorkshopController {
           // Simple throttle for hover raycast
           const now = performance.now();
           if (now - handState.lastRaycastTime > this.RAYCAST_INTERVAL_MS) {
-            this.raycaster.setFromCamera(
-              new THREE.Vector2(ndcX, ndcY),
-              this.camera
-            );
-            // Performance optimization: Raycast against hit volume only
-            // This avoids O(n) triangle tests on complex GLB model
+            // Use pooled Vector2
+            this._tempVec2.set(ndcX, ndcY);
+            this.raycaster.setFromCamera(this._tempVec2, this.camera);
+
+            // Reset cached intersects
+            handState.cachedIntersects = [];
+
+            // Check body hit volume
             const hitVolume = this.schematic.userData.hitVolume as
               | THREE.Mesh
               | undefined;
-            handState.cachedIntersects = hitVolume
-              ? this.raycaster.intersectObject(hitVolume, false)
-              : [];
+            if (hitVolume) {
+              handState.cachedIntersects = this.raycaster.intersectObject(
+                hitVolume,
+                false
+              );
+            }
+
+            // Check limb hit volumes
+            for (const [limbName, limbRef] of this.limbRefs) {
+              const limbIntersects = this.raycaster.intersectObject(
+                limbRef.hitVolume,
+                false
+              );
+              if (limbIntersects.length > 0) {
+                // Store limb intersection with limbType metadata
+                limbIntersects.forEach((i) => {
+                  i.object.userData.limbType = limbName;
+                });
+                handState.cachedIntersects.push(...limbIntersects);
+              }
+            }
+
             handState.lastRaycastTime = now;
           }
 
+          // Determine what's being hovered
+          let newHoveredLimb: LimbName | null = null;
           if (handState.cachedIntersects.length > 0) {
-            // Check if any intersection is with the main schematic body
-            const isHoveringBody = handState.cachedIntersects.some(
-              (intersection) => {
-                const hitObject = intersection.object;
-                const userData = hitObject.userData as
-                  | { isHitVolume?: boolean; limbType?: string }
-                  | undefined;
-                const isBodyHitVolume =
-                  userData?.isHitVolume === true && !userData?.limbType;
-                const isBodyMesh =
-                  hitObject instanceof THREE.Mesh &&
-                  hitObject.parent === this.schematic;
-                return isBodyHitVolume || isBodyMesh;
+            for (const intersection of handState.cachedIntersects) {
+              const userData = intersection.object.userData as
+                | {
+                    isHitVolume?: boolean;
+                    limbType?: LimbName;
+                    isBody?: boolean;
+                  }
+                | undefined;
+
+              if (
+                userData?.limbType &&
+                LIMB_NAMES.includes(userData.limbType)
+              ) {
+                newHoveredLimb = userData.limbType;
+                anyHandHovering = true;
+                break; // Prefer first limb found
+              } else if (userData?.isBody || userData?.isHitVolume) {
+                anyHandHovering = true;
               }
-            );
-            if (isHoveringBody) {
-              anyHandHovering = true;
             }
           }
+          this.hoveredLimb = newHoveredLimb;
         }
       }
     }
@@ -681,30 +779,44 @@ export class WorkshopController {
   }
 
   /**
-   * Update hover visual feedback on schematic (Body)
+   * Update hover visual feedback on schematic (Body) and limbs
    * Smoothly interpolates glow intensity for premium feel
    */
   private updateHoverState(isHovering: boolean, deltaTime: number): void {
     this.isHoveringSchematic = isHovering;
 
-    // Smooth transition for hover intensity
-    const targetIntensity = isHovering ? 1 : 0;
-    const transitionSpeed = 8; // Higher = faster transition
+    // Smooth transition for body hover intensity
+    const targetIntensity = isHovering && !this.hoveredLimb ? 1 : 0;
+    const transitionSpeed = 8;
     this.hoverIntensity +=
       (targetIntensity - this.hoverIntensity) * transitionSpeed * deltaTime;
 
-    // Apply visual feedback to schematic
+    // Update per-limb hover intensities
+    for (const [limbName, limbRef] of this.limbRefs) {
+      const currentIntensity = this.limbHoverIntensities.get(limbName) ?? 0;
+      const limbTargetIntensity = this.hoveredLimb === limbName ? 1 : 0;
+      const newIntensity =
+        currentIntensity +
+        (limbTargetIntensity - currentIntensity) * transitionSpeed * deltaTime;
+      this.limbHoverIntensities.set(limbName, newIntensity);
+
+      // Apply amber hover effect to limb shader meshes
+      for (const mesh of limbRef.shaderMeshes) {
+        if (mesh.material.uniforms.uHoverIntensity) {
+          mesh.material.uniforms.uHoverIntensity.value = newIntensity;
+        }
+      }
+    }
+
+    // Apply visual feedback to schematic body
     if (this.schematic) {
-      const baseScale = this.schematic.userData.initialScale || 15.0; // Default if not set
+      const baseScale = this.schematic.userData.initialScale || 3.0;
 
       if (this.hoverIntensity > 0.01) {
-        // Scale up slightly when hovered
         const hoverScale = 1 + this.hoverIntensity * 0.08;
         this.schematic.scale.setScalar(baseScale * hoverScale);
 
-        // Performance optimization: Use cached meshes instead of traverse()
         for (const mesh of this.schematicShaderMeshes) {
-          // Boost opacity for hover feedback
           if (mesh.material.uniforms.uOpacity) {
             const baseOpacity = mesh.userData.baseOpacity ?? 0.4;
             mesh.material.uniforms.uOpacity.value =
@@ -712,13 +824,10 @@ export class WorkshopController {
           }
         }
       } else {
-        // Check if we fully settled to avoid constant updates
         const scaleDiff = Math.abs(this.schematic.scale.x - baseScale);
         if (scaleDiff > 0.001) {
-          // Reset to base state
           this.schematic.scale.setScalar(baseScale);
 
-          // Performance optimization: Use cached meshes instead of traverse()
           for (const mesh of this.schematicShaderMeshes) {
             if (mesh.material.uniforms.uOpacity) {
               const baseOpacity = mesh.userData.baseOpacity ?? 0.4;
@@ -775,9 +884,7 @@ export class WorkshopController {
     for (const [, state] of this.handStates) {
       if (state.isGrabbing) {
         anyHandGrabbing = true;
-        if (state.grabTarget === 'body') {
-          grabTargetStr = 'body';
-        }
+        grabTargetStr = state.grabTarget;
         break;
       }
     }
@@ -790,6 +897,7 @@ export class WorkshopController {
       isGrabbing: anyHandGrabbing,
       isHovering: this.isHoveringSchematic,
       grabTarget: grabTargetStr,
+      hoveredLimb: this.hoveredLimb,
     };
   }
 

@@ -58,6 +58,8 @@ const vertexShader = `
  */
 const fragmentShader = `
   uniform vec3 uColor;
+  uniform vec3 uHoverColor;
+  uniform float uHoverIntensity;
   uniform float uOpacity;
   uniform float uFresnelPower;
   uniform float uTime;
@@ -75,8 +77,9 @@ const fragmentShader = `
     vec3 viewDir = normalize(vViewPosition);
     float fresnel = pow(1.0 - abs(dot(viewDir, vNormal)), uFresnelPower);
     
-    // Base color with fresnel
-    vec3 color = uColor;
+    // Base color with hover blend
+    vec3 baseColor = mix(uColor, uHoverColor, uHoverIntensity);
+    vec3 color = baseColor;
     float alpha = uOpacity;
     
     // Add fresnel glow to edges
@@ -109,8 +112,9 @@ export function createWorkshopMaterial(
   return new THREE.ShaderMaterial({
     uniforms: {
       // Clone the color so each material has its own instance
-      // This prevents mutation in one material from affecting others
       uColor: { value: finalConfig.color.clone() },
+      uHoverColor: { value: new THREE.Color(0xffbf00) }, // Amber
+      uHoverIntensity: { value: 0.0 },
       uOpacity: { value: finalConfig.opacity },
       uFresnelPower: { value: finalConfig.fresnelPower },
       uTime: { value: 0 },
