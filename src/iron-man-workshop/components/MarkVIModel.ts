@@ -1,12 +1,13 @@
 /**
- * MarkVIModel
- * Loads the articulated Mark VI GLB model with per-limb references for manipulation
+ * HologramModel
+ * Loads a GLB 3D model and applies holographic shader effects
  *
  * Performance characteristics:
- * - Uses meshopt compression for optimal asset delivery
- * - Implements BVH-accelerated raycasting on all meshes and hit volumes
- * - Per-limb spherical hit volumes for O(1) raycasting (vs O(n) triangles)
- * - Object pooling pattern: no allocations in hot paths
+ * - Uses meshopt compression for optimal asset delivery (90% size reduction)
+ * - Implements simplified geometry for efficient rendering
+ * - Utilizes optimized geometry for selective wireframe rendering
+ * - Employs fresnel shaders for performant edge highlighting
+ * - Implements O(n) direct iteration for uniform updates
  */
 
 import * as THREE from 'three';
@@ -20,39 +21,13 @@ import {
 import { createWorkshopMaterial } from '../materials/WorkshopMaterial';
 
 // Register BVH extension methods on Three.js prototypes (once at module load)
+// This enables accelerated raycasting for all meshes that have a boundsTree
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
 
-// Import articulated GLB model with separated limbs
-import modelUrl from '../assets/mark-vi-articulated-v2.glb?url';
-
-// =============================================================================
-// Types
-// =============================================================================
-
-/** Limb names matching mesh object names in the GLB */
-export type LimbName = 'arm_left' | 'arm_right' | 'leg_left' | 'leg_right';
-
-/** All valid limb names for iteration */
-export const LIMB_NAMES: readonly LimbName[] = [
-  'arm_left',
-  'arm_right',
-  'leg_left',
-  'leg_right',
-] as const;
-
-/** Reference to a manipulable limb */
-export interface LimbReference {
-  /** The Object3D (mesh or group) for this limb */
-  mesh: THREE.Object3D;
-  /** Invisible sphere for fast hit testing */
-  hitVolume: THREE.Mesh;
-  /** Offset from mesh origin to rotation pivot (shoulder/hip) */
-  pivotOffset: THREE.Vector3;
-  /** Shader meshes for this limb (for hover effects) */
-  shaderMeshes: THREE.Mesh<THREE.BufferGeometry, THREE.ShaderMaterial>[];
-}
+// Import optimized GLB model
+import modelUrl from '../assets/mark-vi-schematic.glb?url';
 
 export interface MarkVIModelConfig {
   /** Primary hologram color */
@@ -71,61 +46,13 @@ export interface MarkVIModelResult {
   group: THREE.Group;
   /** Promise that resolves when the model is fully loaded */
   loadPromise: Promise<void>;
-  /** Map of limb name → limb reference (populated after load) */
-  limbs: Map<LimbName, LimbReference>;
-  /** Body hit volume for non-limb grabs */
-  bodyHitVolume: THREE.Mesh | null;
-}
-
-// =============================================================================
-// Helper functions
-// =============================================================================
-
-/**
- * Find an object by name (case-insensitive)
- */
-function findObjectByNameCI(
-  parent: THREE.Object3D,
-  name: string
-): THREE.Object3D | null {
-  let result: THREE.Object3D | null = null;
-  parent.traverse((child) => {
-    if (child.name.toLowerCase() === name.toLowerCase()) {
-      result = child;
-    }
-  });
-  return result;
 }
 
 /**
- * Collect all shader meshes from an object and its children
- */
-function collectShaderMeshes(
-  obj: THREE.Object3D
-): THREE.Mesh<THREE.BufferGeometry, THREE.ShaderMaterial>[] {
-  const meshes: THREE.Mesh<THREE.BufferGeometry, THREE.ShaderMaterial>[] = [];
-  obj.traverse((child) => {
-    if (
-      child instanceof THREE.Mesh &&
-      child.material instanceof THREE.ShaderMaterial
-    ) {
-      meshes.push(
-        child as THREE.Mesh<THREE.BufferGeometry, THREE.ShaderMaterial>
-      );
-    }
-  });
-  return meshes;
-}
-
-// =============================================================================
-// Main loader function
-// =============================================================================
-
-/**
- * Creates and loads the articulated Mark VI model with limb references
+ * Creates a holographic model by loading the GLB file and applying shader effects
  *
  * @param config - Configuration options for the hologram appearance
- * @returns Object containing the group, load promise, and limb references
+ * @returns Object containing the group (can be added to scene immediately) and load promise
  */
 export function loadMarkVIModel(
   config: Partial<MarkVIModelConfig> = {}
@@ -134,14 +61,9 @@ export function loadMarkVIModel(
   const group = new THREE.Group();
   group.scale.setScalar(scale);
 
-  // Initialize limbs map (will be populated after load)
-  const limbs = new Map<LimbName, LimbReference>();
-
-  // Placeholder for body hit volume
-  let bodyHitVolume: THREE.Mesh | null = null;
-
   const loadPromise = new Promise<void>((resolve, reject) => {
     const loader = new GLTFLoader();
+    // Enable meshopt decompression for the compressed GLB
     loader.setMeshoptDecoder(MeshoptDecoder);
 
     loader.load(
@@ -149,7 +71,7 @@ export function loadMarkVIModel(
       (gltf) => {
         const model = gltf.scene;
 
-        // Create shared materials
+        // Create material for wireframe rendering
         const edgeMaterial = new THREE.LineBasicMaterial({
           color,
           transparent: true,
@@ -157,19 +79,13 @@ export function loadMarkVIModel(
           blending: THREE.AdditiveBlending,
         });
 
-        // Collect shader meshes for each limb
-        const limbShaderMeshes = new Map<
-          string,
-          THREE.Mesh<THREE.BufferGeometry, THREE.ShaderMaterial>[]
-        >();
-        LIMB_NAMES.forEach((name) => limbShaderMeshes.set(name, []));
-
-        // Apply holographic material to all meshes and compute BVH
+        // Apply holographic material to all meshes and compute BVH for raycasting
         model.traverse((child) => {
           if (child instanceof THREE.Mesh) {
+            // Store original material info for potential restoration
             child.userData.originalMaterial = child.material;
 
-            // Apply holographic shader material
+            // Apply holographic shader material for background volume
             child.material = createWorkshopMaterial({
               color,
               opacity: 0.1,
@@ -178,7 +94,8 @@ export function loadMarkVIModel(
               enableScanlines: true,
             });
 
-            // Generate wireframe edges
+            // Generate wireframe geometry based on edge angle threshold
+            // 20° threshold filters for structural edges while ignoring smooth curvature
             const edges = new THREE.EdgesGeometry(child.geometry, 20);
             const wireframe = new THREE.LineSegments(
               edges,
@@ -186,24 +103,9 @@ export function loadMarkVIModel(
             );
             child.add(wireframe);
 
-            // Compute BVH for accelerated raycasting
+            // Compute BVH for accelerated raycasting (10-100x faster)
+            // This is a one-time cost at load time
             child.geometry.computeBoundsTree();
-
-            // Categorize shader mesh by limb name
-            const meshName = child.name.toLowerCase();
-            for (const limbName of LIMB_NAMES) {
-              if (meshName === limbName || meshName.includes(limbName)) {
-                limbShaderMeshes
-                  .get(limbName)
-                  ?.push(
-                    child as THREE.Mesh<
-                      THREE.BufferGeometry,
-                      THREE.ShaderMaterial
-                    >
-                  );
-                break;
-              }
-            }
           }
         });
 
@@ -212,95 +114,31 @@ export function loadMarkVIModel(
         const center = box.getCenter(new THREE.Vector3());
         model.position.sub(center);
 
-        // Force world matrix update so subsequent bounding box calculations are correct
-        model.updateMatrixWorld(true);
-
+        // Add the model to our group
         group.add(model);
 
-        // Log all mesh names in the model for debugging
-        console.log('[MarkVIModel] Mesh names in GLB:');
-        model.traverse((child) => {
-          if (child instanceof THREE.Mesh) {
-            console.log(`  - "${child.name}"`);
-          }
-        });
-
-        // Extract limb references using case-insensitive matching
-        // and collect shader meshes for each limb
-        for (const limbName of LIMB_NAMES) {
-          // Find limb object by name (case-insensitive) using helper
-          const limbObject = findObjectByNameCI(model, limbName);
-
-          if (limbObject) {
-            // Collect all shader meshes that are part of this limb
-            const limbShaderMeshesArray = collectShaderMeshes(limbObject);
-
-            // Compute bounding sphere for this limb (now in correct world space)
-            const limbBox = new THREE.Box3().setFromObject(limbObject);
-            const limbWorldCenter = limbBox.getCenter(new THREE.Vector3());
-            const limbSize = limbBox.getSize(new THREE.Vector3());
-            const radius = Math.max(limbSize.x, limbSize.y, limbSize.z) * 0.55;
-
-            // Create invisible hit volume sphere
-            const hitGeometry = new THREE.SphereGeometry(radius, 8, 8);
-            hitGeometry.computeBoundsTree();
-            const hitMaterial = new THREE.MeshBasicMaterial({
-              color: 0xffffff,
-              transparent: true,
-              opacity: 0,
-              depthWrite: false,
-            });
-            const hitVolume = new THREE.Mesh(hitGeometry, hitMaterial);
-            hitVolume.userData = { isHitVolume: true, limbType: limbName };
-
-            // Position hit volume in group's local space
-            // Since group has identity transform, world center = group-local center
-            hitVolume.position.copy(limbWorldCenter);
-
-            // Add to group (not limb) - static position but correct for raycasting
-            // The schematic rotation applies to the group, which includes hit volumes
-            group.add(hitVolume);
-
-            limbs.set(limbName, {
-              mesh: limbObject,
-              hitVolume,
-              pivotOffset: new THREE.Vector3(0, 0, 0), // GLB now has correct origins
-              shaderMeshes: limbShaderMeshesArray,
-            });
-
-            console.log(
-              `[MarkVIModel] Found limb "${limbName}" with ${
-                limbShaderMeshesArray.length
-              } shader meshes, hitVolume radius: ${radius.toFixed(3)}`
-            );
-          } else {
-            console.warn(`[MarkVIModel] Limb "${limbName}" not found in GLB`);
-          }
-        }
-
-        // Create body hit volume for non-limb grabs
+        // Create invisible hit volume for interaction raycasting
+        // Size it to encompass the entire model
         const size = box.getSize(new THREE.Vector3());
         const maxDim = Math.max(size.x, size.y, size.z);
-        const bodyHitGeometry = new THREE.SphereGeometry(maxDim * 0.6, 8, 8);
-        bodyHitGeometry.computeBoundsTree();
-        const bodyHitMaterial = new THREE.MeshBasicMaterial({
+        const hitGeometry = new THREE.SphereGeometry(maxDim * 0.6, 8, 8);
+        const hitMaterial = new THREE.MeshBasicMaterial({
           color: 0xffffff,
           transparent: true,
           opacity: 0,
           depthWrite: false,
         });
-        bodyHitVolume = new THREE.Mesh(bodyHitGeometry, bodyHitMaterial);
-        bodyHitVolume.userData = { isHitVolume: true, isBody: true };
-        bodyHitVolume.layers.set(0); // Layer 0 for body
-        group.userData.hitVolume = bodyHitVolume;
-        group.add(bodyHitVolume);
+        const hitVolume = new THREE.Mesh(hitGeometry, hitMaterial);
+        hitVolume.userData = { isHitVolume: true };
+        // Store reference for direct access (avoids recursive traversal in raycasting)
+        group.userData.hitVolume = hitVolume;
+        group.add(hitVolume);
 
-        console.log(
-          `[MarkVIModel] Articulated GLB loaded with ${limbs.size} limbs`
-        );
+        console.log('[MarkVIModel] GLB model loaded successfully');
         resolve();
       },
       (progress) => {
+        // Loading progress callback
         if (progress.lengthComputable) {
           const percent = (progress.loaded / progress.total) * 100;
           console.log(`[MarkVIModel] Loading: ${percent.toFixed(1)}%`);
@@ -313,18 +151,20 @@ export function loadMarkVIModel(
     );
   });
 
-  return { group, loadPromise, limbs, bodyHitVolume };
+  return { group, loadPromise };
 }
 
-// =============================================================================
-// Shader update utilities
-// =============================================================================
-
+/**
+ * Type alias for cached shader meshes
+ */
 export type ShaderMesh = THREE.Mesh<THREE.BufferGeometry, THREE.ShaderMaterial>;
 
 /**
  * Updates hologram model shader uniforms using pre-cached mesh array
- * Zero allocations - safe for hot path
+ * This avoids expensive traverse() calls every frame
+ *
+ * @param cachedMeshes - Pre-cached array of shader meshes (from cacheSchematicShaderMeshes)
+ * @param time - Current animation time
  */
 export function updateMarkVIModelCached(
   cachedMeshes: ShaderMesh[],
@@ -336,7 +176,9 @@ export function updateMarkVIModelCached(
 }
 
 /**
- * @deprecated Use updateMarkVIModelCached() with pre-cached meshes
+ * @deprecated Use updateHologramModelCached() with pre-cached meshes for better performance
+ * Updates hologram model shader uniforms by traversing the scene graph
+ * This is kept for backwards compatibility but should be avoided in hot paths
  */
 export function updateMarkVIModel(model: THREE.Group, time: number): void {
   model.traverse((child) => {
