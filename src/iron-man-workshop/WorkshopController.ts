@@ -1200,7 +1200,10 @@ export class WorkshopController {
           }
         } else {
           // === CONTINUE GRABBING ===
-          if (handState.grabTarget === 'limb' && handState.grabStartHandPosition) {
+          if (
+            handState.grabTarget === 'limb' &&
+            handState.grabStartHandPosition
+          ) {
             // === LIMB MOVEMENT & ROTATION (Exploded Mode) ===
             if (
               handState.grabbedLimbMesh &&
@@ -1412,6 +1415,10 @@ export class WorkshopController {
     this.hoverIntensity +=
       (targetIntensity - this.hoverIntensity) * transitionSpeed * deltaTime;
 
+    // Define colors for hover effect
+    const BASE_COLOR = new THREE.Color(0x00ff88); // Original Green-cyan
+    const HOVER_COLOR = new THREE.Color(0xffbf00); // Amber
+
     // Apply visual feedback to schematic
     if (this.schematic) {
       const baseScale = this.schematic.userData.initialScale || 15.0; // Default if not set
@@ -1423,7 +1430,10 @@ export class WorkshopController {
 
         // Apply scale to individual limb meshes
         this.schematic.traverse((child) => {
-          if (child instanceof THREE.Mesh && allLimbs.includes(child.name as LimbType)) {
+          if (
+            child instanceof THREE.Mesh &&
+            allLimbs.includes(child.name as LimbType)
+          ) {
             const limbType = child.name as LimbType;
             const limbIntensity = this.limbHoverIntensities.get(limbType) ?? 0;
 
@@ -1444,24 +1454,43 @@ export class WorkshopController {
           }
         });
 
-        // Update shader opacity for hovered limbs
+        // Update shader opacity and color for hovered limbs
         for (const mesh of this.schematicShaderMeshes) {
-          if (mesh.material.uniforms.uOpacity) {
+          if (
+            mesh.material.uniforms.uOpacity &&
+            mesh.material.uniforms.uColor
+          ) {
             const baseOpacity = mesh.userData.baseOpacity ?? 0.4;
             // Check if this mesh is a hovered limb
             const meshLimbType = mesh.name as LimbType;
             const limbIntensity = allLimbs.includes(meshLimbType)
-              ? (this.limbHoverIntensities.get(meshLimbType) ?? 0)
+              ? this.limbHoverIntensities.get(meshLimbType) ?? 0
               : 0;
+
             mesh.material.uniforms.uOpacity.value =
               baseOpacity + limbIntensity * 0.15;
+
+            // Apply Amber color when hovered (intensity > 0.5 for clear switch)
+            if (limbIntensity > 0.1) {
+              // Lerp towards amber based on intensity
+              mesh.material.uniforms.uColor.value.lerpColors(
+                BASE_COLOR,
+                HOVER_COLOR,
+                limbIntensity
+              );
+            } else {
+              mesh.material.uniforms.uColor.value.copy(BASE_COLOR);
+            }
           }
         }
       } else {
         // === ASSEMBLED STATE: Whole schematic scaling ===
         // Reset individual limb scales to original
         this.schematic.traverse((child) => {
-          if (child instanceof THREE.Mesh && child.userData.originalLimbScale !== undefined) {
+          if (
+            child instanceof THREE.Mesh &&
+            child.userData.originalLimbScale !== undefined
+          ) {
             child.scale.setScalar(child.userData.originalLimbScale as number);
           }
         });
@@ -1474,10 +1503,30 @@ export class WorkshopController {
           // Performance optimization: Use cached meshes instead of traverse()
           for (const mesh of this.schematicShaderMeshes) {
             // Boost opacity for hover feedback
-            if (mesh.material.uniforms.uOpacity) {
+            if (
+              mesh.material.uniforms.uOpacity &&
+              mesh.material.uniforms.uColor
+            ) {
               const baseOpacity = mesh.userData.baseOpacity ?? 0.4;
               mesh.material.uniforms.uOpacity.value =
                 baseOpacity + this.hoverIntensity * 0.15;
+
+              // Key change: Check if THIS specific limb is being hovered
+              // Even in assembled state, we want ONLY the hovered part to glow Amber
+              const meshLimbType = mesh.name as LimbType;
+              const limbIntensity = allLimbs.includes(meshLimbType)
+                ? this.limbHoverIntensities.get(meshLimbType) ?? 0
+                : 0;
+
+              if (limbIntensity > 0.1) {
+                mesh.material.uniforms.uColor.value.lerpColors(
+                  BASE_COLOR,
+                  HOVER_COLOR,
+                  limbIntensity
+                );
+              } else {
+                mesh.material.uniforms.uColor.value.copy(BASE_COLOR);
+              }
             }
           }
         } else {
@@ -1489,9 +1538,13 @@ export class WorkshopController {
 
             // Performance optimization: Use cached meshes instead of traverse()
             for (const mesh of this.schematicShaderMeshes) {
-              if (mesh.material.uniforms.uOpacity) {
+              if (
+                mesh.material.uniforms.uOpacity &&
+                mesh.material.uniforms.uColor
+              ) {
                 const baseOpacity = mesh.userData.baseOpacity ?? 0.4;
                 mesh.material.uniforms.uOpacity.value = baseOpacity;
+                mesh.material.uniforms.uColor.value.copy(BASE_COLOR);
               }
             }
           }
