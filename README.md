@@ -33,7 +33,6 @@ Clear the mist to reveal reality.
 - **Gestures**: Wave hands to wipe the fog off the mirror.
 - [Design Document](docs/DESIGN-FOGGY-MIRROR.md)
 
-
 https://github.com/user-attachments/assets/65dfe3ac-6dc1-4339-be15-adaa11671228
 
 ### 3. Cosmic Slash
@@ -43,10 +42,14 @@ Slice through cosmic objects with lightsaber hands in this high-energy arcade mo
 - **Gestures**: Slash with hands to destroy objects, build combos, and defeat bosses.
 - [Design Document](docs/DESIGN-COSMIC-SLASH.md)
 
-
 https://github.com/user-attachments/assets/6410fd2d-ea70-4f16-8bf9-df84b9cc1e59
 
+### 4. Iron Man Workshop
 
+Inspect and assemble the Iron Man Mk. III armor in a premium, holographic environment.
+
+- **Gestures**: Open palm for exploded view, closed fist to assemble. Pinch to manipulate parts.
+- [Design Document](docs/DESIGN-IRON-MAN-WORKSHOP.md)
 
 ## 🚀 Quick Start
 
@@ -66,6 +69,7 @@ npm run build && npm run preview
 - **G**: Switch to Galaxy Mode
 - **F**: Switch to Foggy Mirror Mode
 - **C**: Switch to Cosmic Slash Mode
+- **I**: Switch to Iron Man Workshop Mode
 - **H**: Toggle Hints
 - **D**: Toggle Debug Panel
 - **Esc**: Stop/Dispose
