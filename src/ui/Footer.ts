@@ -1,6 +1,6 @@
 /**
  * Footer Component
- * Displays the "built by" credit
+ * Displays the "vibed by" credit
  */
 
 export class Footer {
@@ -18,7 +18,7 @@ export class Footer {
     this.element.className = 'app-footer';
     this.element.innerHTML = `
       <a href="https://x.com/quiet_node" target="_blank" rel="noopener noreferrer">
-        built by @quiet_node
+        vibed by @quiet_node
       </a>
     `;
 

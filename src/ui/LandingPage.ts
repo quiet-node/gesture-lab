@@ -86,7 +86,7 @@ export class LandingPage {
 
         <footer class="landing-footer">
           <a href="https://x.com/quiet_node" target="_blank" rel="noopener noreferrer">
-            built by @quiet_node
+            vibed by @quiet_node
           </a>
         </footer>
       </div>
