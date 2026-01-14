@@ -51,6 +51,10 @@ Inspect and assemble the Iron Man Mk. III armor in a premium, holographic enviro
 - **Gestures**: Open palm for exploded view, closed fist to assemble. Pinch to manipulate parts.
 - [Design Document](docs/DESIGN-IRON-MAN-WORKSHOP.md)
 
+
+https://github.com/user-attachments/assets/4b61baac-f71e-478a-bd0a-2509a7c9e2be
+
+
 ## 🚀 Quick Start
 
 ```bash
