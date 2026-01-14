@@ -776,11 +776,13 @@ export class WorkshopController {
           this.targetCameraZ = this.baseCameraZ + 3.8; // Zoom out MORE (was 2.5)
           this.intensifyHologramEffect(true);
           this.animateRingsVisibility(false); // Fade out rings during explosion
+          this.animatePanelsVisibility(false); // Fade out panels during explosion
         } else if (newState === 'assembling') {
           this.targetCameraZ = this.baseCameraZ; // Zoom back
           this.intensifyHologramEffect(false);
         } else if (newState === 'assembled') {
           this.animateRingsVisibility(true); // Fade in rings after reassembly
+          this.animatePanelsVisibility(true); // Fade in panels after reassembly
         }
       },
     });
@@ -1431,6 +1433,83 @@ export class WorkshopController {
             overwrite: true,
           });
         }
+      }
+    });
+  }
+
+  /**
+   * Animates the visibility of the background panels (fade in/out).
+   *
+   * Handles both ShaderMaterial (uOpacity uniform) and LineBasicMaterial
+   * (opacity property) for panel meshes and their border/bracket decorations.
+   *
+   * @param visible - Target visibility state (`true` = fade in, `false` = fade out)
+   *
+   * @remarks
+   * Stores original opacity on first call to preserve material-specific values.
+   * Uses GSAP with `overwrite: true` to prevent animation stacking.
+   */
+  private animatePanelsVisibility(visible: boolean): void {
+    if (!this.panels) return;
+
+    const duration = visible ? 0.6 : 0.8;
+    const ease = visible ? 'power2.out' : 'power2.inOut';
+
+    this.panels.traverse((child: THREE.Object3D) => {
+      // Handle Mesh materials (panel faces with ShaderMaterial)
+      if (child instanceof THREE.Mesh && child.material) {
+        const material = child.material;
+
+        // Store original opacity on first call
+        if (child.userData.originalOpacity === undefined) {
+          child.userData.originalOpacity =
+            material instanceof THREE.ShaderMaterial
+              ? material.uniforms?.uOpacity?.value ?? 0.5
+              : (material as THREE.MeshBasicMaterial).opacity ?? 0.5;
+        }
+
+        const targetOpacity = visible ? child.userData.originalOpacity : 0;
+
+        if (
+          material instanceof THREE.ShaderMaterial &&
+          material.uniforms?.uOpacity
+        ) {
+          gsap.to(material.uniforms.uOpacity, {
+            value: targetOpacity,
+            duration,
+            ease,
+            overwrite: true,
+          });
+        } else if ('opacity' in material) {
+          gsap.to(material, {
+            opacity: targetOpacity,
+            duration,
+            ease,
+            overwrite: true,
+          });
+        }
+      }
+
+      // Handle Line/LineSegments materials (borders and brackets)
+      if (
+        (child instanceof THREE.Line || child instanceof THREE.LineSegments) &&
+        child.material
+      ) {
+        const material = child.material as THREE.LineBasicMaterial;
+
+        // Store original opacity on first call
+        if (child.userData.originalOpacity === undefined) {
+          child.userData.originalOpacity = material.opacity ?? 1.0;
+        }
+
+        const targetOpacity = visible ? child.userData.originalOpacity : 0;
+
+        gsap.to(material, {
+          opacity: targetOpacity,
+          duration,
+          ease,
+          overwrite: true,
+        });
       }
     });
   }
