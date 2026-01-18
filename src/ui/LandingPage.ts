@@ -17,7 +17,7 @@ export class LandingPage {
 
   constructor(
     container: HTMLElement,
-    onSelect: (mode: InteractionMode) => void
+    onSelect: (mode: InteractionMode) => void,
   ) {
     this.container = container;
     this.onSelect = onSelect;
@@ -83,12 +83,6 @@ export class LandingPage {
             <div class="portal-bg"></div>
           </button>
         </div>
-
-        <footer class="landing-footer">
-          <a href="https://x.com/quiet_node" target="_blank" rel="noopener noreferrer">
-            vibed by @quiet_node
-          </a>
-        </footer>
       </div>
     `;
 
@@ -259,30 +253,6 @@ export class LandingPage {
         margin-left: 2rem;
         display: flex;
         align-items: center;
-      }
-
-      .landing-footer {
-        position: absolute;
-        bottom: 30px;
-        width: 100%;
-        display: flex;
-        justify-content: center;
-        animation: fadeUp 0.8s ease-out forwards;
-        animation-delay: 0.5s;
-        opacity: 0;
-      }
-      
-      .landing-footer a {
-        color: rgba(255, 255, 255, 0.5);
-        text-decoration: none;
-        font-size: 0.9rem;
-        letter-spacing: 0.05rem;
-        transition: color 0.3s ease;
-        pointer-events: auto;
-      }
-      
-      .landing-footer a:hover {
-        color: #fff;
       }
 
       .key-hint {

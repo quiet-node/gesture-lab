@@ -20,8 +20,10 @@
   --color-warning: #ffeb3b;
   --color-error: #f44336;
   --color-info: #2196f3;
-  --font-system: 'Nunito', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
-    Oxygen, Ubuntu, sans-serif;
+  --footer-accent-base: 255, 165, 117;
+  --font-system:
+    'Nunito', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen,
+    Ubuntu, sans-serif;
   --font-mono: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
 }
 
@@ -181,7 +183,9 @@ canvas {
 
 /* Glow effect for galaxy-like elements */
 .glow {
-  text-shadow: 0 0 10px var(--color-primary), 0 0 20px var(--color-primary),
+  text-shadow:
+    0 0 10px var(--color-primary),
+    0 0 20px var(--color-primary),
     0 0 40px var(--color-secondary);
 }
 
@@ -281,5 +285,365 @@ canvas {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+  }
+}
+
+/* ============================================
+ * LOGO SHIMMER EFFECT
+ * Adapted from Tally Aura for Gesture Lab
+ * ============================================ */
+
+.logo-shimmer-container {
+  position: relative;
+  overflow: hidden;
+  display: inline-flex;
+  align-items: baseline;
+}
+
+.logo-shimmer {
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0) 20%,
+    rgba(255, 255, 255, 0.4) 50%,
+    rgba(255, 255, 255, 0) 80%,
+    transparent 100%
+  );
+  pointer-events: none;
+  opacity: 0;
+  z-index: 10;
+}
+
+/* Trigger sweep on logo hover */
+.logo-shimmer-container:hover .logo-shimmer:not(.logo-shimmer-initial) {
+  animation: logo-shimmer-sweep 1s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  opacity: 1;
+}
+
+/* Initial reveal animation class (applied once on show) */
+.logo-shimmer-initial.active {
+  animation: logo-shimmer-sweep 1.5s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  opacity: 1;
+}
+
+@keyframes logo-shimmer-sweep {
+  0% {
+    left: -100%;
+  }
+  100% {
+    left: 100%;
+  }
+}
+
+/* ============================================
+ * PREMIUM FOOTER STYLES
+ * ============================================ */
+
+.app-footer-premium {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  z-index: 2000;
+  border-top: 1px solid rgba(var(--footer-accent-base), 0.05);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  background: rgba(5, 5, 8, 0.5);
+}
+
+.app-footer-premium .footer-inner {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 16px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 24px; /* Further reduced from 32px */
+}
+
+/* Left section: Logo + Year */
+.app-footer-premium .footer-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  opacity: 0;
+  transform: translateX(-12px);
+  animation: footer-slide-in-left 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.1s
+    forwards;
+}
+
+.app-footer-premium .footer-logo {
+  font-family: 'Playfair Display', serif;
+  font-size: 0.75rem;
+  letter-spacing: -0.02em;
+  color: rgba(255, 255, 255, 0.8);
+  cursor: default;
+  line-height: 1; /* Tighter line height */
+}
+
+.app-footer-premium .footer-divider {
+  height: 10px; /* Reduced from 12px */
+  width: 1px;
+  background: rgba(var(--footer-accent-base), 0.1);
+}
+
+.app-footer-premium .footer-year {
+  font-size: 0.65rem; /* Reduced from 0.75rem */
+  color: rgba(255, 255, 255, 0.4);
+}
+
+/* Center section: Creator Attribution */
+.app-footer-premium .footer-center {
+  display: flex;
+  justify-content: center;
+  opacity: 0;
+  transform: translateY(8px);
+  animation: footer-slide-in-up 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.2s forwards;
+}
+
+.app-footer-premium .footer-attribution {
+  display: flex;
+  align-items: center;
+  gap: 6px; /* Reduced from 8px */
+  padding: 2px 8px; /* Reduced from 6px 12px */
+  text-decoration: none;
+  transition: all 0.3s ease;
+  opacity: 0.7;
+}
+
+.app-footer-premium .footer-attribution:hover {
+  opacity: 1;
+}
+
+.app-footer-premium .footer-attribution-text {
+  font-size: 0.6rem; /* Reduced from 0.625rem */
+  color: rgba(255, 255, 255, 0.6);
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  transition: color 0.3s ease;
+}
+
+.app-footer-premium .footer-attribution:hover .footer-attribution-text {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.app-footer-premium .footer-profile-pic {
+  width: 16px; /* Reduced from 20px */
+  height: 16px; /* Reduced from 20px */
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1px solid rgba(var(--footer-accent-base), 0.1);
+  transition: border-color 0.3s ease;
+}
+
+/* Attribution Hover Panel */
+.footer-attribution-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.footer-attribution-panel {
+  position: absolute;
+  bottom: calc(100% + 10px);
+  left: 50%;
+  transform: translateX(-50%) translateY(10px);
+  opacity: 0;
+  pointer-events: none;
+  white-space: nowrap;
+  background: rgba(10, 10, 15, 0.9);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 8px 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  z-index: 2100;
+}
+
+.footer-attribution-wrapper:hover .footer-attribution-panel {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+.panel-message {
+  font-size: 0.7rem;
+  color: rgba(255, 255, 255, 0.7);
+  font-weight: 500;
+}
+
+.panel-arrow {
+  position: absolute;
+  bottom: -5px;
+  left: 50%;
+  transform: translateX(-50%) rotate(45deg);
+  width: 10px;
+  height: 10px;
+  background: rgba(10, 10, 15, 0.9);
+  border-right: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.app-footer-premium .footer-attribution:hover .footer-profile-pic {
+  border-color: rgba(var(--footer-accent-base), 0.2);
+}
+
+/* Right section: Privacy Indicator */
+.app-footer-premium .footer-right {
+  display: flex;
+  align-items: center;
+  min-width: 100px;
+  justify-content: flex-end;
+  opacity: 0;
+  transform: translateX(12px);
+  animation: footer-slide-in-right 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.3s
+    forwards;
+}
+
+.app-footer-premium .footer-privacy {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 6px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 99px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.app-footer-premium .privacy-dot {
+  width: 4px;
+  height: 4px;
+  background-color: #4caf50;
+  border-radius: 50%;
+  box-shadow: 0 0 4px rgba(76, 175, 80, 0.4);
+}
+
+.app-footer-premium .privacy-text {
+  font-size: 0.55rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: rgba(255, 255, 255, 0.5);
+  font-weight: 600;
+}
+
+/* Repository Link */
+.app-footer-premium .footer-repo-link {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 4px; /* Reduced padding for compact left section */
+  text-decoration: none;
+  transition: all 0.3s ease;
+  opacity: 0.7;
+}
+
+.app-footer-premium .footer-repo-link:hover {
+  opacity: 1;
+}
+
+.app-footer-premium .footer-icon-circle {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(var(--footer-accent-base), 0.1);
+  transition: all 0.3s ease;
+}
+
+.app-footer-premium .footer-icon-svg {
+  width: 10px;
+  height: 10px;
+  color: #000; /* Black icon on white background */
+}
+
+.app-footer-premium .footer-repo-text {
+  font-size: 0.6rem;
+  color: rgba(255, 255, 255, 0.6);
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  transition: color 0.3s ease;
+}
+
+.app-footer-premium .footer-repo-link:hover .footer-repo-text {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.app-footer-premium .footer-repo-link:hover .footer-icon-circle {
+  transform: scale(1.05);
+  box-shadow: 0 0 8px rgba(255, 255, 255, 0.3);
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+/* Animations */
+@keyframes footer-slide-in-left {
+  from {
+    opacity: 0;
+    transform: translateX(-12px);
+    filter: blur(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+    filter: blur(0);
+  }
+}
+
+@keyframes footer-slide-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+    filter: blur(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+}
+
+@keyframes footer-slide-in-right {
+  from {
+    opacity: 0;
+    transform: translateX(12px);
+    filter: blur(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+    filter: blur(0);
+  }
+}
+
+/* Mobile responsive: reorder sections */
+@media (max-width: 640px) {
+  .app-footer-premium .footer-inner {
+    padding: 4px 12px 8px;
+    flex-wrap: wrap;
+  }
+
+  .app-footer-premium .footer-center {
+    order: 1;
+    width: 100%;
+    justify-content: center;
+  }
+
+  .app-footer-premium .footer-left {
+    order: 2;
+  }
+
+  .app-footer-premium .footer-right {
+    order: 3;
+    min-width: auto;
   }
 }

@@ -1,0 +1,230 @@
+/* Trust Badge Styles - Premium Dark Mode Glassmorphism */
+
+:root {
+  /* Dark Theme Palette */
+  --tb-primary-green: #4caf50; /* Matching main.css success color */
+  --tb-primary-green-dim: #388e3c;
+
+  /* Dark Glass Backgrounds */
+  --tb-bg-glass: rgba(10, 10, 12, 0.85);
+  --tb-bg-hover: rgba(255, 255, 255, 0.03);
+  --tb-bg-icon-box: rgba(255, 255, 255, 0.05);
+
+  /* Text Colors */
+  --tb-text-primary: rgba(255, 255, 255, 0.9);
+  --tb-text-secondary: rgba(255, 255, 255, 0.6);
+  --tb-text-muted: rgba(255, 255, 255, 0.4);
+
+  /* Borders */
+  --tb-border-subtle: rgba(255, 255, 255, 0.08);
+  --tb-border-hover: rgba(255, 255, 255, 0.15);
+
+  /* Shadows */
+  --tb-shadow-popover: 0 4px 24px -6px rgba(0, 0, 0, 0.5);
+}
+
+/* Badge Trigger (The Button) */
+.trust-badge {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.25rem 0.5rem; /* Further reduced padding */
+  border-radius: 0.375rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  background: transparent;
+  border: 1px solid transparent;
+  outline: none;
+  user-select: none;
+  opacity: 0.7; /* Matches .footer-attribution */
+}
+
+.trust-badge:hover {
+  opacity: 1; /* Matches .footer-attribution:hover */
+  transform: translateY(0);
+}
+
+.trust-badge__icon {
+  width: 0.825rem; /* Slightly reduced to match text scale better */
+  height: 0.825rem;
+  color: var(--tb-primary-green);
+  transition: all 0.3s ease;
+}
+
+.trust-badge:hover .trust-badge__icon {
+  transform: scale(1.05);
+}
+
+.trust-badge__label {
+  font-size: 0.6rem; /* Matches .footer-attribution-text */
+  font-weight: 500;
+  text-transform: none; /* No caps */
+  letter-spacing: 0.05em;
+  color: rgba(255, 255, 255, 0.6); /* Matches footer text */
+  white-space: nowrap;
+  transition: color 0.3s ease;
+}
+
+.trust-badge:hover .trust-badge__label {
+  color: rgba(255, 255, 255, 0.9); /* Matches footer hover */
+}
+
+/* Popover Container */
+.trust-badge__popover {
+  position: absolute;
+  bottom: calc(100% + 12px);
+  right: 0;
+  width: 18rem;
+  background: var(--tb-bg-glass);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--tb-border-subtle);
+  border-radius: 0.75rem;
+  box-shadow: var(--tb-shadow-popover);
+  overflow: hidden;
+  z-index: 1000;
+
+  /* Animation State */
+  opacity: 0;
+  transform: translateY(8px) scale(0.98);
+  pointer-events: none;
+  visibility: hidden;
+  transition:
+    opacity 0.2s ease-out,
+    transform 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+    visibility 0.2s;
+}
+
+.trust-badge__popover.is-open {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  pointer-events: auto;
+  visibility: visible;
+}
+
+/* Popover Header */
+.trust-badge__header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1rem 1rem 0.75rem;
+  border-bottom: 1px solid var(--tb-border-subtle);
+}
+
+.trust-badge__header-icon-box {
+  padding: 0.25rem;
+  border-radius: 0.375rem;
+  background-color: var(--tb-bg-icon-box);
+  border: 1px solid var(--tb-border-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.trust-badge__header-icon {
+  width: 0.875rem;
+  height: 0.875rem;
+  color: var(--tb-text-secondary);
+}
+
+.trust-badge__header-title {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--tb-text-primary);
+  letter-spacing: 0.025em;
+  font-family: inherit; /* Use app font, not serif for modern look */
+}
+
+/* Content List */
+.trust-badge__content {
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.875rem;
+}
+
+/* Trust Item */
+.trust-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+.trust-item__icon-box {
+  margin-top: 0.125rem;
+  width: 1rem;
+  height: 1rem;
+  border-radius: 0.125rem;
+  background-color: rgba(76, 175, 80, 0.1); /* Green tint */
+  border: 1px solid rgba(76, 175, 80, 0.2);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.trust-item__icon {
+  width: 0.625rem;
+  height: 0.625rem;
+  color: var(--tb-primary-green);
+}
+
+.trust-item__text-col {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  text-align: left;
+}
+
+.trust-item__title {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--tb-text-primary);
+}
+
+.trust-item__desc {
+  font-size: 0.625rem;
+  color: var(--tb-text-secondary);
+  line-height: 1.375;
+  font-weight: 400;
+}
+
+/* Footer */
+.trust-badge__footer {
+  padding: 0.5rem 1rem;
+  background-color: rgba(0, 0, 0, 0.2);
+  border-top: 1px solid var(--tb-border-subtle);
+}
+
+.trust-badge__footer-link {
+  display: block;
+  text-align: center;
+  font-size: 0.5625rem;
+  color: var(--tb-text-muted);
+  font-family: var(--font-mono, monospace);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  opacity: 0.8;
+  text-decoration: none;
+  transition: all 0.2s;
+}
+
+.trust-badge__footer-link:hover {
+  opacity: 1;
+  color: var(--tb-text-primary);
+  text-decoration: none;
+}
+
+/* Mobile Adjustment */
+@media (max-width: 640px) {
+  .trust-badge__popover {
+    position: fixed;
+    bottom: 4rem;
+    right: 1rem;
+    left: 1rem;
+    width: auto;
+    background: rgba(10, 10, 12, 0.95); /* More opaque on mobile */
+  }
+}

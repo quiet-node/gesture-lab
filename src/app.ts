@@ -178,6 +178,7 @@ export class App {
 
     // Footer
     this.footer = new Footer(this.container);
+    this.footer.onClick(() => this.returnToMainMenu());
 
     // Hint Component
     this.hintComponent = new HintComponent(this.container);
@@ -273,13 +274,11 @@ export class App {
     this.state = 'landing';
     this.currentMode = null;
 
-    // Hide other UI
+    // Show/Keep other UI
     this.statusIndicator?.hide();
-    this.footer?.hide();
+    this.footer?.show();
     if (this.videoElement) this.videoElement.style.opacity = '0';
-    this.hintComponent?.hide(); // Assuming hide method exists or I need to add it
-    // Actually HintComponent doesn't have hide() in my implementation above, only toggle().
-    // I should add hide() to HintComponent.
+    this.hintComponent?.hide();
 
     // Show landing
     this.landingPage?.show();
@@ -401,7 +400,7 @@ export class App {
    */
   private updateStatus(
     message: string,
-    state: 'loading' | 'ready' | 'error' | 'active'
+    state: 'loading' | 'ready' | 'error' | 'active',
   ): void {
     this.statusIndicator?.update(message, state);
   }
@@ -421,21 +420,21 @@ export class App {
       this.foggyMirrorController
     ) {
       this.foggyMirrorController.enableDebug((info) =>
-        this.updateFoggyMirrorDebugPanel(info)
+        this.updateFoggyMirrorDebugPanel(info),
       );
     } else if (
       this.currentMode === 'cosmic-slash' &&
       this.cosmicSlashController
     ) {
       this.cosmicSlashController.enableDebug((info) =>
-        this.updateCosmicSlashDebugPanel(info)
+        this.updateCosmicSlashDebugPanel(info),
       );
     } else if (
       this.currentMode === 'iron-man-workshop' &&
       this.workshopController
     ) {
       this.workshopController.enableDebug((info) =>
-        this.updateWorkshopDebugPanel(info)
+        this.updateWorkshopDebugPanel(info),
       );
     }
   }
@@ -570,28 +569,28 @@ export class App {
     } else {
       if (this.currentMode === 'galaxy' && this.controller) {
         this.controller.enableDebug((info) =>
-          this.updateGalaxyDebugPanel(info)
+          this.updateGalaxyDebugPanel(info),
         );
       } else if (
         this.currentMode === 'foggy-mirror' &&
         this.foggyMirrorController
       ) {
         this.foggyMirrorController.enableDebug((info) =>
-          this.updateFoggyMirrorDebugPanel(info)
+          this.updateFoggyMirrorDebugPanel(info),
         );
       } else if (
         this.currentMode === 'cosmic-slash' &&
         this.cosmicSlashController
       ) {
         this.cosmicSlashController.enableDebug((info) =>
-          this.updateCosmicSlashDebugPanel(info)
+          this.updateCosmicSlashDebugPanel(info),
         );
       } else if (
         this.currentMode === 'iron-man-workshop' &&
         this.workshopController
       ) {
         this.workshopController.enableDebug((info) =>
-          this.updateWorkshopDebugPanel(info)
+          this.updateWorkshopDebugPanel(info),
         );
       }
     }
@@ -669,7 +668,7 @@ export class App {
     if (!this.controller) {
       this.controller = new HandGalaxyController(
         this.handTracker,
-        this.galaxyRenderer
+        this.galaxyRenderer,
       );
       this.controller.initializeEffects(this.galaxyRenderer.getScene());
     }
@@ -717,7 +716,7 @@ export class App {
       this.foggyMirrorController = new FoggyMirrorController(
         this.handTracker,
         this.container,
-        { debug: this.config.debug }
+        { debug: this.config.debug },
       );
       this.foggyMirrorController.initialize();
     }
@@ -746,7 +745,7 @@ export class App {
     // Re-enable debug if it was active
     if (this.debugComponent?.isVisibleState()) {
       this.foggyMirrorController.enableDebug((info) =>
-        this.updateFoggyMirrorDebugPanel(info)
+        this.updateFoggyMirrorDebugPanel(info),
       );
     }
   }
@@ -790,7 +789,7 @@ export class App {
       this.cosmicSlashController = new CosmicSlashController(
         this.handTracker,
         this.container,
-        { debug: this.config.debug }
+        { debug: this.config.debug },
       );
       this.cosmicSlashController.initialize();
     }
@@ -819,7 +818,7 @@ export class App {
     // Re-enable debug if it was active
     if (this.debugComponent?.isVisibleState()) {
       this.cosmicSlashController.enableDebug((info) =>
-        this.updateCosmicSlashDebugPanel(info)
+        this.updateCosmicSlashDebugPanel(info),
       );
     }
   }
@@ -844,7 +843,7 @@ export class App {
       this.workshopController = new WorkshopController(
         this.handTracker,
         this.container,
-        { debug: this.config.debug }
+        { debug: this.config.debug },
       );
       this.workshopController.initialize();
     }
@@ -873,7 +872,7 @@ export class App {
     // Re-enable debug if it was active
     if (this.debugComponent?.isVisibleState()) {
       this.workshopController.enableDebug((info) =>
-        this.updateWorkshopDebugPanel(info)
+        this.updateWorkshopDebugPanel(info),
       );
     }
   }

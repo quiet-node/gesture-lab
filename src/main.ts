@@ -6,6 +6,7 @@
 import { inject } from '@vercel/analytics';
 import { App } from './app';
 import './styles/main.css';
+import './styles/trust-badge.css';
 
 // Import fonts
 import '@fontsource/nunito/200.css';
