@@ -53,7 +53,7 @@ export class App {
   private cosmicSlashController: CosmicSlashController | null = null;
   private workshopController: WorkshopController | null = null;
   private config: AppConfig;
-  private currentMode: InteractionMode | null = null;
+  private currentMode: InteractionMode | null = null
 
   // UI Components
   private landingPage: LandingPage | null = null;
