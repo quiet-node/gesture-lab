@@ -12,6 +12,8 @@ import { CosmicSlashController } from './cosmic-slash/CosmicSlashController';
 import { CosmicSlashDebugInfo } from './cosmic-slash/types';
 import { WorkshopController } from './iron-man-workshop/WorkshopController';
 import { WorkshopDebugInfo } from './iron-man-workshop/types';
+import { StellarWaveController } from './stellar-wave/StellarWaveController';
+import { StellarWaveDebugInfo } from './stellar-wave/types';
 import { HandTracker } from './shared/HandTracker';
 import { DebugComponent } from './ui/DebugComponent';
 import { Footer } from './ui/Footer';
@@ -52,6 +54,7 @@ export class App {
   private foggyMirrorController: FoggyMirrorController | null = null;
   private cosmicSlashController: CosmicSlashController | null = null;
   private workshopController: WorkshopController | null = null;
+  private stellarWaveController: StellarWaveController | null = null;
   private config: AppConfig;
   private currentMode: InteractionMode | null = null;
 
@@ -166,6 +169,8 @@ export class App {
         this.switchToGalaxyMode();
       } else if (mode === 'foggy-mirror') {
         this.switchToFoggyMirrorMode();
+      } else if (mode === 'stellar-wave') {
+        this.switchToStellarWaveMode();
       }
     });
 
@@ -247,6 +252,9 @@ export class App {
       } else if (key === 'f') {
         this.switchToFoggyMirrorMode();
         return;
+      } else if (key === 's') {
+        this.switchToStellarWaveMode();
+        return;
       }
 
       // Mode specific shortcuts
@@ -260,6 +268,8 @@ export class App {
           this.controller?.reset();
         } else if (this.currentMode === 'iron-man-workshop') {
           this.workshopController?.reset();
+        } else if (this.currentMode === 'stellar-wave') {
+          this.stellarWaveController?.reset();
         }
         return;
       }
@@ -320,6 +330,14 @@ export class App {
       this.workshopController.disableDebug();
       this.workshopController.dispose();
       this.workshopController = null;
+    }
+
+    // Stop stellar wave controller
+    if (this.stellarWaveController) {
+      this.stellarWaveController.stop();
+      this.stellarWaveController.disableDebug();
+      this.stellarWaveController.dispose();
+      this.stellarWaveController = null;
     }
   }
 
@@ -415,6 +433,8 @@ export class App {
       this.cosmicSlashController.enableDebug((info) => this.updateCosmicSlashDebugPanel(info));
     } else if (this.currentMode === 'iron-man-workshop' && this.workshopController) {
       this.workshopController.enableDebug((info) => this.updateWorkshopDebugPanel(info));
+    } else if (this.currentMode === 'stellar-wave' && this.stellarWaveController) {
+      this.stellarWaveController.enableDebug((info) => this.updateStellarWaveDebugPanel(info));
     }
   }
 
@@ -513,6 +533,9 @@ export class App {
       } else if (this.currentMode === 'iron-man-workshop') {
         const handCount = this.workshopController?.getHandCount() ?? 0;
         this.updateHandStatus(handCount);
+      } else if (this.currentMode === 'stellar-wave') {
+        const handCount = this.stellarWaveController?.getHandCount() ?? 0;
+        this.updateHandStatus(handCount);
       }
       // Note: foggy-mirror mode has its own update loop in FoggyMirrorController
 
@@ -545,6 +568,7 @@ export class App {
       this.foggyMirrorController?.disableDebug();
       this.cosmicSlashController?.disableDebug();
       this.workshopController?.disableDebug();
+      this.stellarWaveController?.disableDebug();
     } else {
       if (this.currentMode === 'galaxy' && this.controller) {
         this.controller.enableDebug((info) => this.updateGalaxyDebugPanel(info));
@@ -554,6 +578,8 @@ export class App {
         this.cosmicSlashController.enableDebug((info) => this.updateCosmicSlashDebugPanel(info));
       } else if (this.currentMode === 'iron-man-workshop' && this.workshopController) {
         this.workshopController.enableDebug((info) => this.updateWorkshopDebugPanel(info));
+      } else if (this.currentMode === 'stellar-wave' && this.stellarWaveController) {
+        this.stellarWaveController.enableDebug((info) => this.updateStellarWaveDebugPanel(info));
       }
     }
   }
@@ -594,6 +620,10 @@ export class App {
       // Slight dim for workshop mode to make glowing elements more visible
       this.videoElement.style.cssText =
         baseStyles + 'filter: brightness(0.4) contrast(0.9) saturate(0.8);';
+    } else if (mode === 'stellar-wave') {
+      // Dim video for stellar wave to make dots more visible
+      this.videoElement.style.cssText =
+        baseStyles + 'filter: brightness(0.2) contrast(0.7) saturate(0.8);';
     } else {
       // Full brightness for foggy-mirror mode
       this.videoElement.style.cssText = baseStyles + 'filter: none;';
@@ -860,6 +890,76 @@ export class App {
   }
 
   /**
+   * Switch to stellar wave interaction mode
+   */
+  switchToStellarWaveMode(): void {
+    if (this.currentMode === 'stellar-wave') return;
+
+    console.log('[App] Switching to stellar-wave mode');
+
+    // Hide landing page
+    this.landingPage?.hide();
+
+    // Stop any currently active mode
+    this.stopCurrentMode();
+
+    // Initialize stellar wave controller if needed
+    if (!this.stellarWaveController) {
+      this.updateStatus('Loading Stellar Wave...', 'loading');
+      this.stellarWaveController = new StellarWaveController(this.handTracker, this.container);
+      this.stellarWaveController.initialize();
+    }
+
+    // Start stellar wave controller
+    this.stellarWaveController.start();
+
+    // Apply video styles - dim video for stellar wave mode
+    this.applyVideoStyles('stellar-wave');
+
+    // Update mode
+    this.currentMode = 'stellar-wave';
+    this.state = 'running';
+    this.updateHandStatus(0);
+
+    // Show UI elements
+    this.footer?.show();
+    this.hintComponent?.update('stellar-wave');
+    this.hintComponent?.show();
+    this.modeIndicator?.update('stellar-wave');
+
+    // Start loop
+    this.startAnimationLoop();
+
+    // Show camera permission banner if camera is not enabled
+    if (!this.handTracker.isCameraEnabled()) {
+      this.cameraPermissionBanner?.show('stellar-wave');
+    }
+
+    // Re-enable debug if it was active
+    if (this.debugComponent?.isVisibleState()) {
+      this.stellarWaveController.enableDebug((info) => this.updateStellarWaveDebugPanel(info));
+    }
+  }
+
+  /**
+   * Update stellar wave debug panel with current info
+   */
+  private updateStellarWaveDebugPanel(info: StellarWaveDebugInfo): void {
+    if (!this.debugComponent) return;
+
+    this.debugComponent.update(`
+      <div style="margin-bottom: 8px; color: #fff; font-weight: bold;">Debug Info</div>
+      <div>FPS: ${info.fps.toFixed(1)}</div>
+      <div>Hands: ${info.handsDetected}</div>
+      <div>Dots: ${info.dotCount}</div>
+      <div>Active Ripples: ${info.activeRipples}</div>
+      <div style="margin-top: 4px; border-top: 1px solid rgba(255,255,255,0.2); padding-top: 4px;">
+        <div>Physics: ${info.physicsTimeMs.toFixed(1)} ms</div>
+      </div>
+    `);
+  }
+
+  /**
    * Clean up and stop the application
    */
   dispose(): void {
@@ -876,6 +976,7 @@ export class App {
     this.foggyMirrorController?.dispose();
     this.cosmicSlashController?.dispose();
     this.workshopController?.dispose();
+    this.stellarWaveController?.dispose();
     this.handTracker.dispose();
     this.galaxyRenderer?.dispose();
     this.deviceBanner?.dispose();

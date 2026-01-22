@@ -5,7 +5,7 @@
  * bypassing MediaPipe's DrawingUtils for maximum performance. Only visible
  * when debug mode is enabled.
  *
- * @module iron-man-workshop/components/HandLandmarkOverlay
+ * @module shared/HandLandmarkOverlay
  */
 
 import type { HandLandmarkerResult } from '@mediapipe/tasks-vision';

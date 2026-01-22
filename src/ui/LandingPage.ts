@@ -3,7 +3,12 @@
  * Displays the initial mode selection screen
  */
 
-export type InteractionMode = 'galaxy' | 'foggy-mirror' | 'cosmic-slash' | 'iron-man-workshop';
+export type InteractionMode =
+  | 'galaxy'
+  | 'foggy-mirror'
+  | 'cosmic-slash'
+  | 'iron-man-workshop'
+  | 'stellar-wave';
 
 export class LandingPage {
   private container: HTMLElement;
@@ -72,6 +77,17 @@ export class LandingPage {
             </div>
             <div class="portal-footer">
               <span class="key-hint">Press <kbd>F</kbd></span>
+            </div>
+            <div class="portal-bg"></div>
+          </button>
+
+          <button class="portal-card stellar-portal" data-mode="stellar-wave">
+            <div class="portal-content">
+              <h2 class="portal-title">Stellar Wave</h2>
+              <p class="portal-desc">Trigger cosmic ripples with your pinch</p>
+            </div>
+            <div class="portal-footer">
+              <span class="key-hint">Press <kbd>S</kbd></span>
             </div>
             <div class="portal-bg"></div>
           </button>
@@ -209,6 +225,10 @@ export class LandingPage {
 
       .workshop-portal .portal-bg {
         background: linear-gradient(90deg, rgba(0, 255, 255, 0.1), transparent);
+      }
+
+      .stellar-portal .portal-bg {
+        background: linear-gradient(90deg, rgba(100, 200, 255, 0.1), transparent);
       }
 
       .portal-card:hover {
