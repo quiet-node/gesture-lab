@@ -22,7 +22,7 @@ import { createWorkshopGrid } from './components/WorkshopGrid';
 import { createWorkshopRings, updateWorkshopRings } from './components/WorkshopRings';
 import { createWorkshopPanels, updateWorkshopPanels } from './components/WorkshopPanels';
 import { loadMarkVIModel, updateMarkVIModelCached } from './components/MarkVIModel';
-import { HandLandmarkOverlay } from './components/HandLandmarkOverlay';
+import { HandLandmarkOverlay } from '../shared/HandLandmarkOverlay';
 import { ExplodedViewManager, LimbType } from './components/ExplodedViewManager';
 import { ParticleTrailSystem } from './components/ParticleTrailEmitter';
 import { PartInfoPanel } from './components/PartInfoPanel';

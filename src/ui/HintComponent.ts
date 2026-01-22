@@ -17,7 +17,9 @@ export class HintComponent {
     this.actionHandler = handler;
   }
 
-  update(mode: 'galaxy' | 'foggy-mirror' | 'cosmic-slash' | 'iron-man-workshop'): void {
+  update(
+    mode: 'galaxy' | 'foggy-mirror' | 'cosmic-slash' | 'iron-man-workshop' | 'stellar-wave'
+  ): void {
     if (!this.element) {
       this.createDOM();
     }
@@ -64,6 +66,17 @@ export class HintComponent {
           <div class="hint-item">Move together to shrink</div>
           <div class="hint-item">Close hands for Big Bang</div>
           <div class="hint-item">Pinch for Star burst</div>
+        </div>
+      `;
+    } else if (mode === 'stellar-wave') {
+      content.innerHTML = `
+        <div class="hint-header">
+          <span class="hint-title">Guide</span>
+        </div>
+          <div class="hint-item">Pinch right hand to trigger ripple</div>
+          <div class="hint-item">Watch waves spread outward</div>
+          <div class="hint-item">Multiple ripples create patterns</div>
+          <div class="hint-item">Press <kbd>R</kbd> to reset</div>
         </div>
       `;
     } else {

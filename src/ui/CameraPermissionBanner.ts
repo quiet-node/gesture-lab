@@ -14,6 +14,7 @@ const MODE_MESSAGES: Record<InteractionMode, string> = {
   'cosmic-slash': 'Enable camera to slice objects in your space',
   galaxy: 'Enable camera to control the galaxy with your hands',
   'foggy-mirror': 'Enable camera for the mirror effect',
+  'stellar-wave': 'Enable camera for pinch-triggered ripples',
 };
 
 export class CameraPermissionBanner {
