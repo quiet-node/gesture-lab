@@ -228,6 +228,8 @@ export class StellarWaveController {
 
     if (!result || result.landmarks.length === 0) {
       this.lastHandCount = 0;
+      this.renderer?.updateInteraction(null, null);
+      this.audioManager?.stopRepulsion();
       return;
     }
 
@@ -253,6 +255,37 @@ export class StellarWaveController {
         this.renderer?.triggerRipple(x, y);
         this.audioManager?.playRipple();
       }
+    }
+
+    // Process Left Hand Index Finger for repulsion interaction
+    let leftHandFound = false;
+
+    for (let i = 0; i < result.landmarks.length; i++) {
+      // Check if this hand is Left
+      const hand = handedness[i];
+      if (hand === 'left') {
+        const landmarks = result.landmarks[i];
+
+        // Index finger tip is landmark 8 in MediaPipe Hands
+        if (landmarks.length > 8) {
+          const indexSafe = landmarks[8];
+          this.renderer?.updateInteraction(indexSafe.x, indexSafe.y);
+          leftHandFound = true;
+
+          // Start repulsion sound if not already active
+          this.audioManager?.startRepulsion();
+
+          break; // Only track one left hand
+        }
+      }
+    }
+
+    // If no left hand found, clear interaction
+    if (!leftHandFound) {
+      this.renderer?.updateInteraction(null, null);
+
+      // Stop repulsion sound
+      this.audioManager?.stopRepulsion();
     }
   }
 

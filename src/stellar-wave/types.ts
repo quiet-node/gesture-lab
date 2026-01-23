@@ -61,6 +61,16 @@ export interface StellarWaveConfig {
   /** Ripple wave expansion speed in pixels per second */
   rippleSpeed: number;
 
+  // Interaction params
+  /** Radius of repulsion effect in pixels */
+  interactionRadius: number;
+  /** Strength of the repulsion force */
+  repulsionStrength: number;
+
+  // Audio params
+  /** Frequency of the ripple sound in Hz */
+  rippleFreq: number;
+
   /** Width of the ripple ring in pixels */
   rippleWidth: number;
 
@@ -91,6 +101,13 @@ export const DEFAULT_STELLAR_WAVE_CONFIG: StellarWaveConfig = {
   maxRipples: 5,
   normalDotRadius: 3,
   rippleDotRadius: 4,
+
+  // Interaction params
+  interactionRadius: 150,
+  repulsionStrength: 5.0,
+
+  // Audio params
+  rippleFreq: 440,
 };
 
 /**

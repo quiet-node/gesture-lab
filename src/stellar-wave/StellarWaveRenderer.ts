@@ -121,6 +121,9 @@ export class StellarWaveRenderer {
   private ripples: RippleState[] = [];
   private animationTime: number = 0;
 
+  // Interaction tracking (Left Index Finger)
+  private interactionPoint: { x: number; y: number } | null = null;
+
   // Position and intensity buffers (for GPU updates)
   private positionAttribute: THREE.BufferAttribute | null = null;
   private rippleIntensityAttribute: THREE.BufferAttribute | null = null;
@@ -292,6 +295,25 @@ export class StellarWaveRenderer {
   }
 
   /**
+   * Update the continuous interaction point (e.g. finger position)
+   * @param x - X position in normalized coordinates (0-1), or null to clear
+   * @param y - Y position in normalized coordinates (0-1), or null to clear
+   */
+  updateInteraction(x: number | null, y: number | null): void {
+    if (x === null || y === null) {
+      this.interactionPoint = null;
+      return;
+    }
+
+    // Convert normalized coordinates to screen pixels
+    // Mirror X axis to match the flipped video display (transform: scaleX(-1))
+    const screenX = (1 - x) * this.container.clientWidth;
+    const screenY = y * this.container.clientHeight;
+
+    this.interactionPoint = { x: screenX, y: screenY };
+  }
+
+  /**
    * Update physics simulation and ripple propagation
    * @param deltaTime - Time elapsed since last frame in seconds
    */
@@ -393,6 +415,33 @@ export class StellarWaveRenderer {
       // Update position
       point.position.x += point.velocity.dx;
       point.position.y += point.velocity.dy;
+    }
+
+    // Apply interaction repulsion (Left Index Finger)
+    if (this.interactionPoint) {
+      const { interactionRadius, repulsionStrength } = this.config;
+
+      for (const point of this.meshPoints) {
+        if (point.pinned) continue;
+
+        const dx = point.position.x - this.interactionPoint.x;
+        const dy = point.position.y - this.interactionPoint.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+
+        if (distance < interactionRadius) {
+          // Calculate repulsion force (stronger when closer)
+          const force = (1 - distance / interactionRadius) * repulsionStrength;
+
+          // Apply force away from interaction point
+          if (distance > 0.01) {
+            point.velocity.dx += (dx / distance) * force;
+            point.velocity.dy += (dy / distance) * force;
+
+            // Also add a bit of ripple intensity for visual feedback
+            point.rippleIntensity = Math.max(point.rippleIntensity, force * 0.1);
+          }
+        }
+      }
     }
   }
 
