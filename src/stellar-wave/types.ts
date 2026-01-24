@@ -149,3 +149,29 @@ export enum StellarWaveState {
   /** Mode disposed and cannot be reused */
   DISPOSED = 'DISPOSED',
 }
+
+/**
+ * Specific interaction behaviors for Stellar Wave
+ */
+export enum StellarWaveInteraction {
+  /**
+   * cosmic style/pulse
+   * Triggered by pinching right index and thumb.
+   * Creates a visual ripple effect.
+   */
+  COSMIC_PULSE = 'COSMIC_PULSE',
+
+  /**
+   * Gravity Well
+   * Triggered by closing right hand fist.
+   * Creates a massive attraction force.
+   */
+  GRAVITY_WELL = 'GRAVITY_WELL',
+
+  /**
+   * Force Field
+   * Triggered by left hand index finger.
+   * Creates a repulsion field around the finger.
+   */
+  FORCE_FIELD = 'FORCE_FIELD',
+}
