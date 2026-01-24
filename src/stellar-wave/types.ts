@@ -170,8 +170,8 @@ export enum StellarWaveInteraction {
 
   /**
    * Force Field
-   * Triggered by left hand index finger.
-   * Creates a repulsion field around the finger.
+   * Triggered by left hand pinch (thumb + index).
+   * Creates a repulsion field around the pinch point.
    */
   FORCE_FIELD = 'FORCE_FIELD',
 }
