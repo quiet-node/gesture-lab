@@ -70,13 +70,12 @@ export class StellarWaveAudioManager {
    * - Balanced Volume (Quieter and pop-free)
    */
   /**
-   * Play the synthesized ripple sound effect.
    * "Ethereal Surge" architecture:
    * - Internalized Warm Tones (220Hz - 440Hz range)
    * - Dual-Gate Architecture (Zero-pop release)
    * - Ultra-low Volume (Calibrated to be very subtle)
    */
-  playRipple(): void {
+  playCosmicPulse(): void {
     if (!this.isInitialized || !this.audioContext) {
       return;
     }
@@ -172,11 +171,11 @@ export class StellarWaveAudioManager {
     });
     this.activeNodes.clear();
 
-    // Stop repulsion sound if active
-    this.stopRepulsion();
+    // Stop force field sound if active
+    this.stopForceField();
   }
 
-  // --- Repulsion Sound (Left Hand Interaction) ---
+  // --- Force Field Sound (Left Hand Interaction) ---
   // Refined "Force Field" drone: Sine + Triangle (110Hz) + LFO + LowPass Filter
 
   private repulsionOsc1: OscillatorNode | null = null;
@@ -192,7 +191,7 @@ export class StellarWaveAudioManager {
    * Start the "Force Field" repulsion hum.
    * A warmer, smoother energy drone that implies active pushing force.
    */
-  startRepulsion(): void {
+  startForceField(): void {
     if (!this.isInitialized || !this.audioContext || this.isRepulsionPlaying) {
       return;
     }
@@ -257,15 +256,15 @@ export class StellarWaveAudioManager {
       this.isRepulsionPlaying = true;
     } catch (e) {
       console.error('[StellarWaveAudioManager] Failed to start repulsion sound', e);
-      this.stopRepulsion();
+      this.stopForceField();
     }
   }
 
   /**
-   * Stop the repulsion sound.
+   * Stop the force field sound.
    * Smooth fade-out to prevent pops.
    */
-  stopRepulsion(): void {
+  stopForceField(): void {
     if (!this.isRepulsionPlaying || !this.audioContext || !this.repulsionMasterGain) {
       return;
     }
@@ -334,7 +333,7 @@ export class StellarWaveAudioManager {
    * Start the "Gravity Well" singularity drone.
    * A dark, unstable sub-bass texture that implies high mass and pressure.
    */
-  startAttraction(): void {
+  startGravityWell(): void {
     if (!this.isInitialized || !this.audioContext || this.isAttractionPlaying) {
       return;
     }
@@ -405,7 +404,7 @@ export class StellarWaveAudioManager {
       this.attractionOsc2.frequency.linearRampToValueAtTime(46, now + 3.0);
     } catch (e) {
       console.error('[StellarWaveAudioManager] Failed to start attraction sound', e);
-      this.stopAttraction();
+      this.stopGravityWell();
     }
   }
 
@@ -413,7 +412,7 @@ export class StellarWaveAudioManager {
    * Stop the gravity well sound.
    * Uses setTargetAtTime for a pop-free, mathematically smooth release.
    */
-  stopAttraction(): void {
+  stopGravityWell(): void {
     if (!this.isAttractionPlaying || !this.audioContext || !this.attractionMasterGain) {
       return;
     }

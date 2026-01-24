@@ -228,10 +228,11 @@ export class StellarWaveController {
 
     if (!result || result.landmarks.length === 0) {
       this.lastHandCount = 0;
-      this.renderer?.updateInteraction(null, null);
-      this.renderer?.setAttraction(null, null); // Clear Gravity Well state
-      this.audioManager?.stopRepulsion();
-      this.audioManager?.stopAttraction(); // Stop Gravity Well audio
+      // Clear all interactions
+      this.renderer?.setForceField(null, null);
+      this.renderer?.setGravityWell(null, null);
+      this.audioManager?.stopForceField();
+      this.audioManager?.stopGravityWell();
       return;
     }
 
@@ -246,40 +247,48 @@ export class StellarWaveController {
     // Run gesture detection
     const gestureResult = this.gestureDetector.detect(result.landmarks, handedness, timestamp);
 
-    // Detect and process pinch gesture for ripple triggering
+    // ----------------------------------------------------------------
+    // 1. COSMIC PULSE
+    // Triggered by pinching right index and thumb (Ripple effect)
+    // ----------------------------------------------------------------
     if (gestureResult.pinch && gestureResult.pinch.state === GestureState.STARTED) {
       const pinchData = gestureResult.pinch.data;
 
       // Only the right hand is configured to trigger ripple effects
       if (pinchData.handedness === 'right') {
-        // Use normalized position for ripple trigger
         const { x, y } = pinchData.normalizedPosition;
-        this.renderer?.triggerRipple(x, y);
-        this.audioManager?.playRipple();
+        this.renderer?.triggerCosmicPulse(x, y);
+        this.audioManager?.playCosmicPulse();
       }
     }
 
-    // Process Gravity Well (Right Hand Fist)
+    // ----------------------------------------------------------------
+    // 2. GRAVITY WELL
+    // Triggered by closing right hand fist
+    // ----------------------------------------------------------------
     if (gestureResult.fist && gestureResult.fist.data.handedness === 'right') {
       const fistState = gestureResult.fist.state;
       const { x, y } = gestureResult.fist.data.normalizedPosition;
 
       if (fistState === GestureState.STARTED || fistState === GestureState.ACTIVE) {
         // Engage Gravity Well
-        this.renderer?.setAttraction(x, y);
-        this.audioManager?.startAttraction();
+        this.renderer?.setGravityWell(x, y);
+        this.audioManager?.startGravityWell();
       } else {
         // Disengage
-        this.renderer?.setAttraction(null, null);
-        this.audioManager?.stopAttraction();
+        this.renderer?.setGravityWell(null, null);
+        this.audioManager?.stopGravityWell();
       }
     } else {
       // Ensure attraction is cleared if no right fist detected
-      this.renderer?.setAttraction(null, null);
-      this.audioManager?.stopAttraction();
+      this.renderer?.setGravityWell(null, null);
+      this.audioManager?.stopGravityWell();
     }
 
-    // Process Left Hand Index Finger for repulsion interaction
+    // ----------------------------------------------------------------
+    // 3. FORCE FIELD
+    // Triggered by Left Hand Index Finger
+    // ----------------------------------------------------------------
     let leftHandFound = false;
 
     for (let i = 0; i < result.landmarks.length; i++) {
@@ -291,11 +300,11 @@ export class StellarWaveController {
         // Index finger tip is landmark 8 in MediaPipe Hands
         if (landmarks.length > 8) {
           const indexSafe = landmarks[8];
-          this.renderer?.updateInteraction(indexSafe.x, indexSafe.y);
+          this.renderer?.setForceField(indexSafe.x, indexSafe.y);
           leftHandFound = true;
 
-          // Start repulsion sound if not already active
-          this.audioManager?.startRepulsion();
+          // Start Force Field sound if not already active
+          this.audioManager?.startForceField();
 
           break; // Only track one left hand
         }
@@ -304,10 +313,8 @@ export class StellarWaveController {
 
     // If no left hand found, clear interaction
     if (!leftHandFound) {
-      this.renderer?.updateInteraction(null, null);
-
-      // Stop repulsion sound
-      this.audioManager?.stopRepulsion();
+      this.renderer?.setForceField(null, null);
+      this.audioManager?.stopForceField();
     }
   }
 

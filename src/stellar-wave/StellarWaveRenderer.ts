@@ -271,11 +271,11 @@ export class StellarWaveRenderer {
   }
 
   /**
-   * Trigger a ripple effect at the specified screen coordinates
+   * Trigger a Cosmic Pulse (Ripple) effect at the specified screen coordinates
    * @param x - X position in normalized coordinates (0-1)
    * @param y - Y position in normalized coordinates (0-1)
    */
-  triggerRipple(x: number, y: number): void {
+  triggerCosmicPulse(x: number, y: number): void {
     // Convert normalized coordinates to screen pixels
     // Mirror X axis to match the flipped video display (transform: scaleX(-1))
     const screenX = (1 - x) * this.container.clientWidth;
@@ -298,11 +298,11 @@ export class StellarWaveRenderer {
   }
 
   /**
-   * Update the continuous interaction point (e.g. finger position)
+   * Update the Force Field interaction point (Left Index Finger)
    * @param x - X position in normalized coordinates (0-1), or null to clear
    * @param y - Y position in normalized coordinates (0-1), or null to clear
    */
-  updateInteraction(x: number | null, y: number | null): void {
+  setForceField(x: number | null, y: number | null): void {
     if (x === null || y === null) {
       this.interactionPoint = null;
       return;
@@ -317,12 +317,12 @@ export class StellarWaveRenderer {
   }
 
   /**
-   * Set the gravity well attraction point
+   * Set the Gravity Well attraction point
    * @param x - X position in normalized coordinates (0-1), or null to clear
    * @param y - Y position in normalized coordinates (0-1), or null to clear
    * @param strength - Attraction strength (default 5.0)
    */
-  setAttraction(x: number | null, y: number | null, strength: number = 5.0): void {
+  setGravityWell(x: number | null, y: number | null, strength: number = 5.0): void {
     if (x === null || y === null) {
       this.attractionPoint = null;
       return;
@@ -466,7 +466,7 @@ export class StellarWaveRenderer {
       point.position.y += point.velocity.dy;
     }
 
-    // Apply interaction repulsion (Left Index Finger)
+    // Apply Force Field repulsion (Left Index Finger)
     if (this.interactionPoint) {
       const { interactionRadius, repulsionStrength } = this.config;
 
