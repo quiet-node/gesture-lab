@@ -82,9 +82,8 @@ export class HandTracker {
       // Start initialization lock
       HandTracker.initializationPromise = (async () => {
         // Step 1: Load WASM runtime
-        const vision = await FilesetResolver.forVisionTasks(
-          'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm'
-        );
+        // Using local assets to guarantee version matching and prevent LinkErrors
+        const vision = await FilesetResolver.forVisionTasks('/wasm');
 
         // Step 2: Create HandLandmarker with configuration
         HandTracker.sharedHandLandmarker = await HandLandmarker.createFromOptions(vision, {

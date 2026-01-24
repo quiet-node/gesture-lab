@@ -28,11 +28,11 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/quiet-node/mediapipe-for-fun.git"
+    "url": "https://github.com/quiet-node/gesture-lab.git"
   },
-  "homepage": "https://github.com/quiet-node/mediapipe-for-fun#readme",
+  "homepage": "https://github.com/quiet-node/gesture-lab#readme",
   "bugs": {
-    "url": "https://github.com/quiet-node/mediapipe-for-fun/issues"
+    "url": "https://github.com/quiet-node/gesture-lab/issues"
   },
   "dependencies": {
     "@fontsource/nunito": "^5.2.7",
@@ -55,6 +55,7 @@
     "@types/three": "^0.182.0",
     "eslint": "^9.39.2",
     "prettier": "^3.8.0",
-    "typescript-eslint": "^8.53.1"
+    "typescript-eslint": "^8.53.1",
+    "vite-plugin-static-copy": "^3.1.6"
   }
 }
