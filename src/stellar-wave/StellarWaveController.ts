@@ -8,7 +8,13 @@
 
 import { HandTracker } from '../shared/HandTracker';
 import { GestureDetector } from '../shared/GestureDetector';
-import { GestureState, type Handedness } from '../shared/GestureTypes';
+import {
+  GestureType,
+  GestureState,
+  type Handedness,
+  type PinchGestureData,
+  type FistGestureData,
+} from '../shared/GestureTypes';
 import { HandLandmarkOverlay } from '../shared/HandLandmarkOverlay';
 import { StellarWaveRenderer } from './StellarWaveRenderer';
 import { StellarWaveAudioManager } from './StellarWaveAudioManager';
@@ -247,74 +253,62 @@ export class StellarWaveController {
     // Run gesture detection
     const gestureResult = this.gestureDetector.detect(result.landmarks, handedness, timestamp);
 
-    // ----------------------------------------------------------------
-    // 1. COSMIC PULSE
-    // Triggered by pinching right index and thumb (Ripple effect)
-    // ----------------------------------------------------------------
-    if (gestureResult.pinch && gestureResult.pinch.state === GestureState.STARTED) {
-      const pinchData = gestureResult.pinch.data;
+    let leftPinchActive = false;
+    let rightFistActive = false;
 
-      // Only the right hand is configured to trigger ripple effects
-      if (pinchData.handedness === 'right') {
-        const { x, y } = pinchData.normalizedPosition;
-        this.renderer?.triggerCosmicPulse(x, y);
-        this.audioManager?.playCosmicPulse();
-      }
-    }
+    // Process all gesture events to handle multiple hands and interactions
+    for (const event of gestureResult.events) {
+      // ----------------------------------------------------------------
+      // 1. COSMIC PULSE & FORCE FIELD (Pinch gestures)
+      // ----------------------------------------------------------------
+      if (event.type === GestureType.PINCH) {
+        const pinchData = event.data as PinchGestureData;
 
-    // ----------------------------------------------------------------
-    // 2. GRAVITY WELL
-    // Triggered by closing right hand fist
-    // ----------------------------------------------------------------
-    if (gestureResult.fist && gestureResult.fist.data.handedness === 'right') {
-      const fistState = gestureResult.fist.state;
-      const { x, y } = gestureResult.fist.data.normalizedPosition;
-
-      if (fistState === GestureState.STARTED || fistState === GestureState.ACTIVE) {
-        // Engage Gravity Well
-        this.renderer?.setGravityWell(x, y);
-        this.audioManager?.startGravityWell();
-      } else {
-        // Disengage
-        this.renderer?.setGravityWell(null, null);
-        this.audioManager?.stopGravityWell();
-      }
-    } else {
-      // Ensure attraction is cleared if no right fist detected
-      this.renderer?.setGravityWell(null, null);
-      this.audioManager?.stopGravityWell();
-    }
-
-    // ----------------------------------------------------------------
-    // 3. FORCE FIELD
-    // Triggered by Left Hand Index Finger
-    // ----------------------------------------------------------------
-    let leftHandFound = false;
-
-    for (let i = 0; i < result.landmarks.length; i++) {
-      // Check if this hand is Left
-      const hand = handedness[i];
-      if (hand === 'left') {
-        const landmarks = result.landmarks[i];
-
-        // Index finger tip is landmark 8 in MediaPipe Hands
-        if (landmarks.length > 8) {
-          const indexSafe = landmarks[8];
-          this.renderer?.setForceField(indexSafe.x, indexSafe.y);
-          leftHandFound = true;
-
-          // Start Force Field sound if not already active
-          this.audioManager?.startForceField();
-
-          break; // Only track one left hand
+        if (pinchData.handedness === 'right') {
+          // Trigger Ripple only on the frame the pinch STARTS
+          if (event.state === GestureState.STARTED) {
+            const { x, y } = pinchData.normalizedPosition;
+            this.renderer?.triggerCosmicPulse(x, y);
+            this.audioManager?.playCosmicPulse();
+          }
+        } else if (pinchData.handedness === 'left') {
+          // Engage Force Field while pinch is ACTIVE or just STARTED
+          if (event.state === GestureState.STARTED || event.state === GestureState.ACTIVE) {
+            const { x, y } = pinchData.normalizedPosition;
+            this.renderer?.setForceField(x, y);
+            this.audioManager?.startForceField();
+            leftPinchActive = true;
+          }
         }
       }
+
+      // ----------------------------------------------------------------
+      // 2. GRAVITY WELL (Right Hand Fist)
+      // ----------------------------------------------------------------
+      if (
+        event.type === GestureType.FIST &&
+        event.data.handedness === 'right' &&
+        (event.state === GestureState.STARTED || event.state === GestureState.ACTIVE)
+      ) {
+        const { x, y } = (event.data as FistGestureData).normalizedPosition;
+        this.renderer?.setGravityWell(x, y);
+        this.audioManager?.startGravityWell();
+        rightFistActive = true;
+      }
     }
 
-    // If no left hand found, clear interaction
-    if (!leftHandFound) {
+    // ----------------------------------------------------------------
+    // 3. CLEANUP / STATE SYNC
+    // Clear interactions if the corresponding gesture is not active
+    // ----------------------------------------------------------------
+    if (!leftPinchActive) {
       this.renderer?.setForceField(null, null);
       this.audioManager?.stopForceField();
+    }
+
+    if (!rightFistActive) {
+      this.renderer?.setGravityWell(null, null);
+      this.audioManager?.stopGravityWell();
     }
   }
 

@@ -73,10 +73,11 @@ export class HintComponent {
         <div class="hint-header">
           <span class="hint-title">Guide</span>
         </div>
+        <div class="hint-list">
           <div class="hint-item">Pinch right hand to trigger ripple</div>
-          <div class="hint-item">Watch waves spread outward</div>
-          <div class="hint-item">Multiple ripples create patterns</div>
-          <div class="hint-item">Press <kbd>R</kbd> to reset</div>
+          <div class="hint-item">Pinch left hand for force field</div>
+          <div class="hint-item">Close right hand for gravity well</div>
+          <div class="hint-item">Press <kbd>R</kbd> to reset patterns</div>
         </div>
       `;
     } else {
