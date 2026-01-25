@@ -71,13 +71,34 @@ export class HintComponent {
     } else if (mode === 'stellar-wave') {
       content.innerHTML = `
         <div class="hint-header">
-          <span class="hint-title">Guide</span>
+          <span class="hint-title">Stellar Wave</span>
+          <span class="hint-subtitle">Interaction Guide</span>
         </div>
-        <div class="hint-list">
-          <div class="hint-item">Pinch right hand to trigger ripple</div>
-          <div class="hint-item">Pinch left hand for force field</div>
-          <div class="hint-item">Close right hand for gravity well</div>
-          <div class="hint-item">Press <kbd>R</kbd> to reset patterns</div>
+        <div class="hint-grid">
+          <div class="hint-row">
+            <span class="hint-label">Cosmic Pulse</span>
+            <span class="hint-value">Right Index Pinch</span>
+          </div>
+          <div class="hint-row">
+            <span class="hint-label">Force Field</span>
+            <span class="hint-value">Left Index Pinch</span>
+          </div>
+          <div class="hint-row">
+            <span class="hint-label">Gravity Well</span>
+            <span class="hint-value">Left Middle Pinch</span>
+          </div>
+          <div class="hint-row">
+            <span class="hint-label">Nebula Vortex</span>
+            <span class="hint-value">Left Ring Pinch</span>
+          </div>
+          <div class="hint-row">
+            <span class="hint-label">Quasar Surge</span>
+            <span class="hint-value">Left Fist Hold</span>
+          </div>
+          <div class="hint-row">
+            <span class="hint-label">System Reset</span>
+            <span class="hint-value">Press <kbd>R</kbd></span>
+          </div>
         </div>
       `;
     } else {

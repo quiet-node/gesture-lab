@@ -190,7 +190,7 @@ export enum StellarWaveState {
  */
 export enum StellarWaveInteraction {
   /**
-   * cosmic style/pulse
+   * Cosmic Pulse
    * Triggered by pinching right index and thumb.
    * Creates a visual ripple effect.
    */
@@ -198,23 +198,23 @@ export enum StellarWaveInteraction {
 
   /**
    * Gravity Well
-   * Triggered by closing right hand fist.
+   * Triggered by pinching left middle finger and thumb.
    * Creates a massive attraction force.
    */
   GRAVITY_WELL = 'GRAVITY_WELL',
 
   /**
    * Nebula Vortex
-   * Triggered by left hand fist.
+   * Triggered by pinching left ring finger and thumb.
    * Creates a spiraling, rotational force field.
    */
   NEBULA_VORTEX = 'NEBULA_VORTEX',
 
   /**
    * Quasar Surge
-   * Triggered by pinching right middle finger and thumb.
+   * Triggered by left hand fist.
    * Two-phase interaction:
-   * - Charging: Particles spiral inward toward pinch point
+   * - Charging: Particles spiral inward toward fist center
    * - Burst: Supernova-like explosion on release
    */
   QUASAR_SURGE = 'QUASAR_SURGE',

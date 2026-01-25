@@ -29,6 +29,8 @@ import {
   FistGestureData,
   MiddlePinchGestureEvent,
   MiddlePinchGestureData,
+  RingPinchGestureEvent,
+  RingPinchGestureData,
 } from './GestureTypes';
 
 /**
@@ -61,14 +63,28 @@ interface GestureStateTracker {
       holdStartTime: number;
     };
   };
-  fist: {
+  ringPinch: {
     left: {
       isActive: boolean;
+      lastTriggerTime: number;
       sustainedFrames: number;
     };
     right: {
       isActive: boolean;
+      lastTriggerTime: number;
       sustainedFrames: number;
+    };
+  };
+  fist: {
+    left: {
+      isActive: boolean;
+      sustainedFrames: number;
+      holdStartTime: number;
+    };
+    right: {
+      isActive: boolean;
+      sustainedFrames: number;
+      holdStartTime: number;
     };
   };
 }
@@ -104,9 +120,13 @@ export class GestureDetector {
         left: { isActive: false, lastTriggerTime: 0, sustainedFrames: 0, holdStartTime: 0 },
         right: { isActive: false, lastTriggerTime: 0, sustainedFrames: 0, holdStartTime: 0 },
       },
+      ringPinch: {
+        left: { isActive: false, lastTriggerTime: 0, sustainedFrames: 0 },
+        right: { isActive: false, lastTriggerTime: 0, sustainedFrames: 0 },
+      },
       fist: {
-        left: { isActive: false, sustainedFrames: 0 },
-        right: { isActive: false, sustainedFrames: 0 },
+        left: { isActive: false, sustainedFrames: 0, holdStartTime: 0 },
+        right: { isActive: false, sustainedFrames: 0, holdStartTime: 0 },
       },
     };
   }
@@ -127,6 +147,7 @@ export class GestureDetector {
     const events: AnyGestureEvent[] = [];
     let pinchEvent: PinchGestureEvent | null = null;
     let middlePinchEvent: MiddlePinchGestureEvent | null = null;
+    let ringPinchEvent: RingPinchGestureEvent | null = null;
     let fistEvent: FistGestureEvent | null = null;
 
     // Process each hand independently
@@ -141,11 +162,18 @@ export class GestureDetector {
         pinchEvent = pinch;
       }
 
-      // Detect middle pinch gesture (thumb + middle finger for Black Hole)
+      // Detect middle pinch gesture (thumb + middle finger)
       const middlePinch = this.detectMiddlePinch(hand, handType, timestamp);
       if (middlePinch) {
         events.push(middlePinch);
         middlePinchEvent = middlePinch;
+      }
+
+      // Detect ring pinch gesture (thumb + ring finger)
+      const ringPinch = this.detectRingPinch(hand, handType, timestamp);
+      if (ringPinch) {
+        events.push(ringPinch);
+        ringPinchEvent = ringPinch;
       }
 
       // Detect fist gesture
@@ -160,6 +188,7 @@ export class GestureDetector {
       events,
       pinch: pinchEvent,
       middlePinch: middlePinchEvent,
+      ringPinch: ringPinchEvent,
       fist: fistEvent,
     };
   }
@@ -218,6 +247,7 @@ export class GestureDetector {
       if (handState.sustainedFrames >= this.config.fist.minDurationFrames) {
         gestureState = GestureState.STARTED;
         handState.isActive = true;
+        handState.holdStartTime = timestamp;
       } else {
         return null; // Not sustained enough yet
       }
@@ -246,10 +276,14 @@ export class GestureDetector {
       -center.z * 10
     );
 
+    // Calculate hold duration for charge intensity
+    const holdDuration = wasActive ? timestamp - handState.holdStartTime : 0;
+
     const data: FistGestureData = {
       position: worldPosition,
       normalizedPosition: { x: center.x, y: center.y, z: center.z },
       handedness,
+      holdDuration,
     };
 
     return {
@@ -462,6 +496,94 @@ export class GestureDetector {
 
     return {
       type: GestureType.MIDDLE_PINCH,
+      state: gestureState,
+      data,
+      timestamp,
+    };
+  }
+
+  /**
+   * Detect ring finger pinch gesture (thumb + ring finger)
+   * used for Nebula Vortex trigger
+   *
+   * @param landmarks
+   * @param handedness
+   * @param timestamp
+   * @returns Ring pinch gesture event or null
+   */
+  private detectRingPinch(
+    landmarks: NormalizedLandmark[],
+    handedness: Handedness,
+    timestamp: number
+  ): RingPinchGestureEvent | null {
+    const thumbTip = landmarks[HandLandmarkIndex.THUMB_TIP];
+    const ringTip = landmarks[HandLandmarkIndex.RING_FINGER_TIP];
+
+    // Calculate distance between thumb and ring finger tips
+    const distance = this.calculateDistance3D(thumbTip, ringTip);
+
+    // Get state tracker
+    const handKey = handedness === 'left' ? 'left' : 'right';
+    const handState = this.state.ringPinch[handKey];
+
+    // Determine gesture state
+    const wasActive = handState.isActive;
+    const isPinching = distance < this.config.ringPinch.threshold;
+    const isReleased = distance > this.config.ringPinch.releaseThreshold;
+
+    const cooldownElapsed =
+      timestamp - handState.lastTriggerTime > this.config.ringPinch.cooldownMs;
+
+    const REQUIRED_SUSTAINED_FRAMES = 3;
+    if (isPinching) {
+      handState.sustainedFrames++;
+    } else {
+      handState.sustainedFrames = 0;
+    }
+
+    const isSustainedPinch = handState.sustainedFrames >= REQUIRED_SUSTAINED_FRAMES;
+
+    let gestureState: GestureState;
+
+    if (!wasActive && isSustainedPinch && cooldownElapsed) {
+      gestureState = GestureState.STARTED;
+      handState.isActive = true;
+      handState.lastTriggerTime = timestamp;
+    } else if (wasActive && isPinching) {
+      gestureState = GestureState.ACTIVE;
+    } else if (wasActive && isReleased) {
+      gestureState = GestureState.ENDED;
+      handState.isActive = false;
+      handState.sustainedFrames = 0;
+    } else if (!wasActive && !isSustainedPinch) {
+      return null;
+    } else {
+      gestureState = wasActive ? GestureState.ACTIVE : GestureState.IDLE;
+      if (gestureState === GestureState.IDLE) return null;
+    }
+
+    // Calculate center
+    const midX = (thumbTip.x + ringTip.x) / 2;
+    const midY = (thumbTip.y + ringTip.y) / 2;
+    const midZ = (thumbTip.z + ringTip.z) / 2;
+
+    const worldPosition = new THREE.Vector3(-(midX - 0.5) * 10, -(midY - 0.5) * 10, -midZ * 10);
+
+    const strength = Math.max(
+      0,
+      Math.min(1, 1 - distance / this.config.ringPinch.releaseThreshold)
+    );
+
+    const data: RingPinchGestureData = {
+      position: worldPosition,
+      normalizedPosition: { x: midX, y: midY, z: midZ },
+      distance,
+      handedness,
+      strength,
+    };
+
+    return {
+      type: GestureType.RING_PINCH,
       state: gestureState,
       data,
       timestamp,

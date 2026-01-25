@@ -22,6 +22,8 @@ export enum GestureType {
   PINCH = 'PINCH',
   /** Thumb and middle finger pinched together (Quasar Surge trigger) */
   MIDDLE_PINCH = 'MIDDLE_PINCH',
+  /** Thumb and ring finger pinched together (Nebula Vortex trigger) */
+  RING_PINCH = 'RING_PINCH',
   /** Fingers curled into a closed fist */
   FIST = 'FIST',
 }
@@ -66,6 +68,8 @@ export interface FistGestureData {
   normalizedPosition: { x: number; y: number; z: number };
   /** Which hand is performing the fist */
   handedness: Handedness;
+  /** Duration the fist has been held in milliseconds */
+  holdDuration: number;
 }
 
 /**
@@ -87,9 +91,27 @@ export interface MiddlePinchGestureData {
 }
 
 /**
+ * Data payload for ring finger pinch gesture (Nebula Vortex trigger)
+ */
+export interface RingPinchGestureData {
+  /** 3D position of the pinch point (midpoint between thumb and ring finger) */
+  position: THREE.Vector3;
+  /** Normalized position (0-1 range from MediaPipe) */
+  normalizedPosition: { x: number; y: number; z: number };
+  /** Distance between thumb and ring finger (normalized) */
+  distance: number;
+  /** Which hand is performing the pinch */
+  handedness: Handedness;
+  /** Confidence/strength of the pinch (0-1) */
+  strength: number;
+}
+
+/**
  * Generic gesture event with typed data payload
  */
-export interface GestureEvent<T = PinchGestureData | FistGestureData | MiddlePinchGestureData> {
+export interface GestureEvent<
+  T = PinchGestureData | FistGestureData | MiddlePinchGestureData | RingPinchGestureData,
+> {
   /** Type of gesture */
   type: GestureType;
   /** Current state in gesture lifecycle */
@@ -111,6 +133,11 @@ export type PinchGestureEvent = GestureEvent<PinchGestureData>;
 export type MiddlePinchGestureEvent = GestureEvent<MiddlePinchGestureData>;
 
 /**
+ * Ring finger pinch gesture event (Nebula Vortex trigger)
+ */
+export type RingPinchGestureEvent = GestureEvent<RingPinchGestureData>;
+
+/**
  * Fist gesture event
  */
 export type FistGestureEvent = GestureEvent<FistGestureData>;
@@ -118,7 +145,11 @@ export type FistGestureEvent = GestureEvent<FistGestureData>;
 /**
  * Union type of all gesture events
  */
-export type AnyGestureEvent = PinchGestureEvent | FistGestureEvent | MiddlePinchGestureEvent;
+export type AnyGestureEvent =
+  | PinchGestureEvent
+  | FistGestureEvent
+  | MiddlePinchGestureEvent
+  | RingPinchGestureEvent;
 
 /**
  * Configuration thresholds for gesture detection
@@ -136,6 +167,15 @@ export interface GestureConfig {
   /** Middle pinch gesture configuration (thumb + middle finger for Quasar Surge) */
   middlePinch: {
     /** Maximum distance between thumb and middle finger to trigger pinch (normalized) */
+    threshold: number;
+    /** Minimum distance to end pinch gesture (with hysteresis) */
+    releaseThreshold: number;
+    /** Minimum time between triggers (ms) - debouncing */
+    cooldownMs: number;
+  };
+  /** Ring pinch gesture configuration (thumb + ring finger for Nebula Vortex) */
+  ringPinch: {
+    /** Maximum distance between thumb and ring finger to trigger pinch (normalized) */
     threshold: number;
     /** Minimum distance to end pinch gesture (with hysteresis) */
     releaseThreshold: number;
@@ -167,6 +207,11 @@ export const DEFAULT_GESTURE_CONFIG: GestureConfig = {
     releaseThreshold: 0.06, // Hysteresis for smooth release detection
     cooldownMs: 200, // Short cooldown - charging effect handles debouncing
   },
+  ringPinch: {
+    threshold: 0.04, // Same as middle pinch
+    releaseThreshold: 0.06,
+    cooldownMs: 200,
+  },
   fist: {
     closeThreshold: 1.0, // Tip dist must be < 1.0x scale (tight fist)
     openThreshold: 1.4, // Tip dist must be > 1.4x scale to open
@@ -184,6 +229,8 @@ export interface GestureDetectionResult {
   pinch: PinchGestureEvent | null;
   /** Current middle pinch state for Quasar Surge (null if not detected) */
   middlePinch: MiddlePinchGestureEvent | null;
+  /** Current ring pinch state (null if not detected) */
+  ringPinch: RingPinchGestureEvent | null;
   /** Current fist state (null if not detected) */
   fist: FistGestureEvent | null;
 }
