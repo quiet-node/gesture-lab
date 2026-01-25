@@ -176,6 +176,9 @@ export class StellarWaveAudioManager {
 
     // Stop vortex sound if active
     this.stopVortex();
+
+    // Stop quasar surge sound if active
+    this.stopQuasarSurgeCharge();
   }
 
   // --- Nebula Vortex Sound (Left Hand Fist) ---
@@ -316,6 +319,353 @@ export class StellarWaveAudioManager {
 
     this.isVortexPlaying = false;
   }
+
+  // --- Quasar Surge Sound (Right Hand Middle Finger + Thumb Pinch) ---
+  // Charging: Deep, ominous rumble that builds intensity
+  // Burst: Powerful explosive release with cosmic overtones
+
+  private quasarSurgeOsc1: OscillatorNode | null = null;
+  private quasarSurgeOsc2: OscillatorNode | null = null;
+  private quasarSurgeOsc3: OscillatorNode | null = null;
+  private quasarSurgeOscHigh: OscillatorNode | null = null;
+  private quasarSurgeLFO: OscillatorNode | null = null;
+  private quasarSurgeFilter: BiquadFilterNode | null = null;
+  private quasarSurgeGain: GainNode | null = null;
+  private quasarSurgeMasterGain: GainNode | null = null;
+  private quasarSurgeHighGain: GainNode | null = null;
+  private quasarSurgeLFO_Gain: GainNode | null = null;
+  private isQuasarSurgeCharging: boolean = false;
+
+  /**
+   * Start or update the Quasar Surge charging sound.
+   * A deep, ominous drone that builds in intensity as charge increases.
+   *
+   * @param chargeIntensity - Charge level (0-1) affecting pitch and volume
+   */
+  startQuasarSurgeCharge(chargeIntensity: number): void {
+    if (!this.isInitialized || !this.audioContext) {
+      return;
+    }
+
+    if (this.audioContext.state === 'suspended') {
+      this.audioContext.resume();
+    }
+
+    const ctx = this.audioContext;
+    const now = ctx.currentTime;
+
+    if (!this.isQuasarSurgeCharging) {
+      // Initialize the quasar surge sound
+      try {
+        this.quasarSurgeOsc1 = ctx.createOscillator();
+        this.quasarSurgeOsc2 = ctx.createOscillator();
+        this.quasarSurgeOsc3 = ctx.createOscillator();
+        this.quasarSurgeOscHigh = ctx.createOscillator();
+        this.quasarSurgeLFO = ctx.createOscillator();
+        this.quasarSurgeLFO_Gain = ctx.createGain();
+        this.quasarSurgeFilter = ctx.createBiquadFilter();
+        this.quasarSurgeGain = ctx.createGain();
+        this.quasarSurgeHighGain = ctx.createGain();
+        this.quasarSurgeMasterGain = ctx.createGain();
+
+        // Configure oscillators - ultra-low frequencies for gravitational feel
+        this.quasarSurgeOsc1.type = 'sine';
+        this.quasarSurgeOsc1.frequency.value = 35; // Sub-bass foundation
+        this.quasarSurgeOsc2.type = 'sawtooth';
+        this.quasarSurgeOsc2.frequency.value = 36.5; // Slight detune for unease
+        this.quasarSurgeOsc3.type = 'triangle';
+        this.quasarSurgeOsc3.frequency.value = 70; // Harmonic
+
+        // High tension oscillator - rising pitch as singularity condenses
+        this.quasarSurgeOscHigh.type = 'sine';
+        this.quasarSurgeOscHigh.frequency.value = 440;
+        this.quasarSurgeHighGain.gain.value = 0; // Starts silent
+
+        // LFO for pulsing, breathing effect
+        this.quasarSurgeLFO.type = 'sine';
+        this.quasarSurgeLFO.frequency.value = 0.5; // Slow pulse
+        this.quasarSurgeLFO_Gain.gain.value = 0.15;
+
+        // Low-pass filter for rumbling texture
+        this.quasarSurgeFilter.type = 'lowpass';
+        this.quasarSurgeFilter.frequency.value = 80;
+        this.quasarSurgeFilter.Q.value = 2;
+
+        // Gains
+        this.quasarSurgeGain.gain.value = 0.4;
+        this.quasarSurgeMasterGain.gain.setValueAtTime(0, now);
+        this.quasarSurgeMasterGain.gain.linearRampToValueAtTime(0.15, now + 0.5);
+
+        // Connect graph
+        this.quasarSurgeLFO.connect(this.quasarSurgeLFO_Gain);
+        this.quasarSurgeLFO_Gain.connect(this.quasarSurgeGain.gain);
+
+        this.quasarSurgeOsc1.connect(this.quasarSurgeFilter);
+        this.quasarSurgeOsc2.connect(this.quasarSurgeFilter);
+        this.quasarSurgeOsc3.connect(this.quasarSurgeFilter);
+        this.quasarSurgeOscHigh.connect(this.quasarSurgeHighGain);
+        this.quasarSurgeHighGain.connect(this.quasarSurgeFilter);
+
+        this.quasarSurgeFilter.connect(this.quasarSurgeGain);
+        this.quasarSurgeGain.connect(this.quasarSurgeMasterGain);
+        this.quasarSurgeMasterGain.connect(ctx.destination);
+
+        // Start oscillators
+        this.quasarSurgeOsc1.start(now);
+        this.quasarSurgeOsc2.start(now);
+        this.quasarSurgeOsc3.start(now);
+        this.quasarSurgeOscHigh.start(now);
+        this.quasarSurgeLFO.start(now);
+
+        this.isQuasarSurgeCharging = true;
+      } catch (e) {
+        console.error('[StellarWaveAudioManager] Failed to start quasar surge charge sound', e);
+        this.stopQuasarSurgeCharge();
+        return;
+      }
+    }
+
+    // Update sound based on charge intensity
+    if (
+      this.quasarSurgeFilter &&
+      this.quasarSurgeMasterGain &&
+      this.quasarSurgeLFO &&
+      this.quasarSurgeOscHigh &&
+      this.quasarSurgeHighGain
+    ) {
+      // Filter opens wide as density increases to let the "tension" through
+      const filterFreq = 80 + chargeIntensity * 800;
+      this.quasarSurgeFilter.frequency.setTargetAtTime(filterFreq, now, 0.1);
+
+      // LFO speeds up significantly as core condenses
+      const lfoFreq = 0.5 + chargeIntensity * 4.5;
+      this.quasarSurgeLFO.frequency.setTargetAtTime(lfoFreq, now, 0.1);
+
+      // Rising tension pitch (Gravitational Whine)
+      const highFreq = 440 + chargeIntensity * 440; // Rises to 880Hz
+      this.quasarSurgeOscHigh.frequency.setTargetAtTime(highFreq, now, 0.1);
+
+      // High tension volume - only kicks in after 40% charge
+      const highVolume = Math.max(0, (chargeIntensity - 0.4) * 0.2);
+      this.quasarSurgeHighGain.gain.setTargetAtTime(highVolume, now, 0.1);
+
+      // Volume builds with charge
+      const volume = 0.15 + chargeIntensity * 0.25;
+      this.quasarSurgeMasterGain.gain.setTargetAtTime(volume, now, 0.1);
+    }
+  }
+
+  /**
+   * Stop the quasar surge charging sound.
+   */
+  stopQuasarSurgeCharge(): void {
+    if (!this.isQuasarSurgeCharging || !this.audioContext || !this.quasarSurgeMasterGain) {
+      return;
+    }
+
+    const ctx = this.audioContext;
+    const now = ctx.currentTime;
+    const timeConstant = 0.08;
+    const stopDelay = 0.4;
+
+    this.quasarSurgeMasterGain.gain.setTargetAtTime(0, now, timeConstant);
+
+    if (this.quasarSurgeLFO_Gain) {
+      this.quasarSurgeLFO_Gain.gain.setTargetAtTime(0, now, 0.04);
+    }
+
+    const stopTime = now + stopDelay;
+    [
+      this.quasarSurgeOsc1,
+      this.quasarSurgeOsc2,
+      this.quasarSurgeOsc3,
+      this.quasarSurgeOscHigh,
+      this.quasarSurgeLFO,
+    ].forEach((node) => {
+      if (node) {
+        try {
+          node.stop(stopTime);
+        } catch {
+          /* ignore */
+        }
+      }
+    });
+
+    setTimeout(
+      () => {
+        if (this.isQuasarSurgeCharging) return;
+
+        this.quasarSurgeOsc1?.disconnect();
+        this.quasarSurgeOsc2?.disconnect();
+        this.quasarSurgeOsc3?.disconnect();
+        this.quasarSurgeOscHigh?.disconnect();
+        this.quasarSurgeLFO?.disconnect();
+        this.quasarSurgeLFO_Gain?.disconnect();
+        this.quasarSurgeFilter?.disconnect();
+        this.quasarSurgeGain?.disconnect();
+        this.quasarSurgeHighGain?.disconnect();
+        this.quasarSurgeMasterGain?.disconnect();
+
+        this.quasarSurgeOsc1 = null;
+        this.quasarSurgeOsc2 = null;
+        this.quasarSurgeOsc3 = null;
+        this.quasarSurgeOscHigh = null;
+        this.quasarSurgeLFO = null;
+        this.quasarSurgeLFO_Gain = null;
+        this.quasarSurgeFilter = null;
+        this.quasarSurgeGain = null;
+        this.quasarSurgeHighGain = null;
+        this.quasarSurgeMasterGain = null;
+      },
+      stopDelay * 1000 + 100
+    );
+
+    this.isQuasarSurgeCharging = false;
+  }
+
+  /**
+   * Play the Quasar Surge burst (supernova explosion) sound.
+   * A powerful, explosive release with cosmic overtones.
+   */
+  /**
+   * Play the Quasar Surge burst (supernova explosion) sound.
+   * A powerful, explosive release with cosmic overtones - "Cosmic Big Bang".
+   */
+  /**
+   * Play the Quasar Surge burst (supernova explosion) sound.
+   * A powerful, explosive release with cosmic overtones - "Cosmic Big Bang".
+   *
+   * @param intensity - Burst intensity (0-1), scales volume, duration, and depth
+   */
+  playQuasarSurgeBurst(intensity: number = 1.0): void {
+    if (!this.isInitialized || !this.audioContext) {
+      return;
+    }
+
+    if (this.audioContext.state === 'suspended') {
+      this.audioContext.resume();
+    }
+
+    // Stop charging sound immediately
+    this.stopQuasarSurgeCharge();
+
+    try {
+      const ctx = this.audioContext;
+      const now = ctx.currentTime;
+
+      // Scale duration and power based on intensity
+      // Minimum punch even at low intensity
+      const safeIntensity = Math.max(0.2, intensity);
+      const duration = 2.0 + safeIntensity * 5.0; // 2s -> 7s tail
+
+      // Master Gain
+      const masterGain = ctx.createGain();
+      masterGain.gain.setValueAtTime(this.config.volume * safeIntensity, now);
+      masterGain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+      masterGain.connect(ctx.destination);
+
+      // Compressor for "Punch"
+      const compressor = ctx.createDynamicsCompressor();
+      compressor.threshold.setValueAtTime(-10, now);
+      compressor.knee.setValueAtTime(30, now);
+      compressor.ratio.setValueAtTime(12, now);
+      compressor.attack.setValueAtTime(0.003, now);
+      compressor.release.setValueAtTime(0.25, now);
+      compressor.connect(masterGain);
+
+      // 1. The "Crack" (Transient)
+      // High-speed pitch drop for immediate impact
+      const snapOsc = ctx.createOscillator();
+      const snapGain = ctx.createGain();
+      const snapFreq = 800 + safeIntensity * 600; // Sharpness scales with intensity
+
+      snapOsc.frequency.setValueAtTime(snapFreq, now);
+      snapOsc.frequency.exponentialRampToValueAtTime(50, now + 0.1);
+      snapGain.gain.setValueAtTime(1.0, now);
+      snapGain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+
+      snapOsc.connect(snapGain);
+      snapGain.connect(compressor);
+      snapOsc.start(now);
+      snapOsc.stop(now + 0.15);
+
+      // 2. The "Quake" (Sub-Bass)
+      // Deep rumble that sustains
+      // Only engage full sub-bass for higher intensities
+      if (safeIntensity > 0.3) {
+        const subOsc = ctx.createOscillator();
+        const subGain = ctx.createGain();
+        const dropStart = 100 + safeIntensity * 50;
+        const dropEnd = 30;
+
+        subOsc.frequency.setValueAtTime(dropStart, now);
+        subOsc.frequency.exponentialRampToValueAtTime(dropEnd, now + duration * 0.6);
+        subGain.gain.setValueAtTime(1.2 * safeIntensity, now);
+        subGain.gain.exponentialRampToValueAtTime(0.001, now + duration * 0.7);
+
+        subOsc.connect(subGain);
+        subGain.connect(compressor);
+        subOsc.start(now);
+        subOsc.stop(now + duration * 0.7);
+      }
+
+      // 3. The "Shockwave" (Noise Sweep)
+      if (this.noiseBuffer) {
+        const noiseSrc = ctx.createBufferSource();
+        const noiseFilter = ctx.createBiquadFilter();
+        const noiseGain = ctx.createGain();
+
+        noiseSrc.buffer = this.noiseBuffer;
+        noiseSrc.loop = true;
+
+        // Bandpass sweep: Low -> High (Expansion) -> Low (Dissipation)
+        // Sweep range depends on intensity
+        const maxFreq = 2000 + safeIntensity * 9000;
+
+        noiseFilter.type = 'lowpass';
+        noiseFilter.frequency.setValueAtTime(100, now);
+        noiseFilter.frequency.exponentialRampToValueAtTime(maxFreq, now + 0.15); // Expands fast
+        noiseFilter.frequency.exponentialRampToValueAtTime(100, now + duration * 0.5); // Dissipates
+
+        noiseGain.gain.setValueAtTime(0.8 * safeIntensity, now);
+        noiseGain.gain.exponentialRampToValueAtTime(0.001, now + duration * 0.6);
+
+        noiseSrc.connect(noiseFilter);
+        noiseFilter.connect(noiseGain);
+        noiseGain.connect(compressor);
+        noiseSrc.start(now);
+        noiseSrc.stop(now + duration * 0.6);
+      }
+
+      // 4. The "Cosmic Dust" (Shimmer)
+      // High frequency texture
+      const shimmerOsc = ctx.createOscillator();
+      const shimmerGain = ctx.createGain();
+      shimmerOsc.type = 'triangle';
+      shimmerOsc.frequency.setValueAtTime(300, now);
+      shimmerOsc.detune.setValueAtTime(2400, now);
+
+      shimmerGain.gain.setValueAtTime(0.15 * safeIntensity, now);
+      shimmerGain.gain.linearRampToValueAtTime(0, now + duration * 0.4);
+
+      shimmerOsc.connect(shimmerGain);
+      shimmerGain.connect(compressor);
+      shimmerOsc.start(now);
+      shimmerOsc.stop(now + duration * 0.4);
+
+      // Cleanup
+      setTimeout(
+        () => {
+          masterGain.disconnect();
+          compressor.disconnect();
+        },
+        duration * 1000 + 100
+      );
+    } catch (e) {
+      console.error('[StellarWaveAudioManager] Failed to play burst', e);
+    }
+  }
+
   // Refined "Force Field" drone: Sine + Triangle (110Hz) + LFO + LowPass Filter
 
   private repulsionOsc1: OscillatorNode | null = null;

@@ -20,6 +20,8 @@ export type { Handedness };
 export enum GestureType {
   /** Thumb and index finger pinched together */
   PINCH = 'PINCH',
+  /** Thumb and middle finger pinched together (Quasar Surge trigger) */
+  MIDDLE_PINCH = 'MIDDLE_PINCH',
   /** Fingers curled into a closed fist */
   FIST = 'FIST',
 }
@@ -67,9 +69,27 @@ export interface FistGestureData {
 }
 
 /**
+ * Data payload for middle finger pinch gesture (Quasar Surge trigger)
+ */
+export interface MiddlePinchGestureData {
+  /** 3D position of the pinch point (midpoint between thumb and middle finger) */
+  position: THREE.Vector3;
+  /** Normalized position (0-1 range from MediaPipe) */
+  normalizedPosition: { x: number; y: number; z: number };
+  /** Distance between thumb and middle finger (normalized) */
+  distance: number;
+  /** Which hand is performing the pinch */
+  handedness: Handedness;
+  /** Confidence/strength of the pinch (0-1) */
+  strength: number;
+  /** Duration the pinch has been held in milliseconds */
+  holdDuration: number;
+}
+
+/**
  * Generic gesture event with typed data payload
  */
-export interface GestureEvent<T = PinchGestureData | FistGestureData> {
+export interface GestureEvent<T = PinchGestureData | FistGestureData | MiddlePinchGestureData> {
   /** Type of gesture */
   type: GestureType;
   /** Current state in gesture lifecycle */
@@ -86,6 +106,11 @@ export interface GestureEvent<T = PinchGestureData | FistGestureData> {
 export type PinchGestureEvent = GestureEvent<PinchGestureData>;
 
 /**
+ * Middle finger pinch gesture event (Quasar Surge trigger)
+ */
+export type MiddlePinchGestureEvent = GestureEvent<MiddlePinchGestureData>;
+
+/**
  * Fist gesture event
  */
 export type FistGestureEvent = GestureEvent<FistGestureData>;
@@ -93,19 +118,28 @@ export type FistGestureEvent = GestureEvent<FistGestureData>;
 /**
  * Union type of all gesture events
  */
-export type AnyGestureEvent = PinchGestureEvent | FistGestureEvent;
+export type AnyGestureEvent = PinchGestureEvent | FistGestureEvent | MiddlePinchGestureEvent;
 
 /**
  * Configuration thresholds for gesture detection
  */
 export interface GestureConfig {
-  /** Pinch gesture configuration */
+  /** Pinch gesture configuration (thumb + index finger) */
   pinch: {
     /** Maximum distance between thumb and index to trigger pinch (normalized) */
     threshold: number;
     /** Minimum distance to end pinch gesture (with hysteresis) */
     releaseThreshold: number;
     /** Minimum time between pinch triggers (ms) - debouncing */
+    cooldownMs: number;
+  };
+  /** Middle pinch gesture configuration (thumb + middle finger for Quasar Surge) */
+  middlePinch: {
+    /** Maximum distance between thumb and middle finger to trigger pinch (normalized) */
+    threshold: number;
+    /** Minimum distance to end pinch gesture (with hysteresis) */
+    releaseThreshold: number;
+    /** Minimum time between triggers (ms) - debouncing */
     cooldownMs: number;
   };
   /** Fist gesture configuration */
@@ -128,6 +162,11 @@ export const DEFAULT_GESTURE_CONFIG: GestureConfig = {
     releaseThreshold: 0.055, // Hysteresis to prevent flickering
     cooldownMs: 800, // 800ms between star bursts (prevent spam)
   },
+  middlePinch: {
+    threshold: 0.04, // Slightly larger threshold for middle finger (harder to pinch precisely)
+    releaseThreshold: 0.06, // Hysteresis for smooth release detection
+    cooldownMs: 200, // Short cooldown - charging effect handles debouncing
+  },
   fist: {
     closeThreshold: 1.0, // Tip dist must be < 1.0x scale (tight fist)
     openThreshold: 1.4, // Tip dist must be > 1.4x scale to open
@@ -143,6 +182,8 @@ export interface GestureDetectionResult {
   events: AnyGestureEvent[];
   /** Current pinch state (null if not detected) */
   pinch: PinchGestureEvent | null;
+  /** Current middle pinch state for Quasar Surge (null if not detected) */
+  middlePinch: MiddlePinchGestureEvent | null;
   /** Current fist state (null if not detected) */
   fist: FistGestureEvent | null;
 }

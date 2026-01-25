@@ -27,6 +27,8 @@ import {
   AnyGestureEvent,
   FistGestureEvent,
   FistGestureData,
+  MiddlePinchGestureEvent,
+  MiddlePinchGestureData,
 } from './GestureTypes';
 
 /**
@@ -43,6 +45,20 @@ interface GestureStateTracker {
       isActive: boolean;
       lastTriggerTime: number;
       sustainedFrames: number;
+    };
+  };
+  middlePinch: {
+    left: {
+      isActive: boolean;
+      lastTriggerTime: number;
+      sustainedFrames: number;
+      holdStartTime: number;
+    };
+    right: {
+      isActive: boolean;
+      lastTriggerTime: number;
+      sustainedFrames: number;
+      holdStartTime: number;
     };
   };
   fist: {
@@ -84,6 +100,10 @@ export class GestureDetector {
         left: { isActive: false, lastTriggerTime: 0, sustainedFrames: 0 },
         right: { isActive: false, lastTriggerTime: 0, sustainedFrames: 0 },
       },
+      middlePinch: {
+        left: { isActive: false, lastTriggerTime: 0, sustainedFrames: 0, holdStartTime: 0 },
+        right: { isActive: false, lastTriggerTime: 0, sustainedFrames: 0, holdStartTime: 0 },
+      },
       fist: {
         left: { isActive: false, sustainedFrames: 0 },
         right: { isActive: false, sustainedFrames: 0 },
@@ -106,6 +126,7 @@ export class GestureDetector {
   ): GestureDetectionResult {
     const events: AnyGestureEvent[] = [];
     let pinchEvent: PinchGestureEvent | null = null;
+    let middlePinchEvent: MiddlePinchGestureEvent | null = null;
     let fistEvent: FistGestureEvent | null = null;
 
     // Process each hand independently
@@ -113,11 +134,18 @@ export class GestureDetector {
       const hand = landmarks[i];
       const handType = handedness[i] || 'unknown';
 
-      // Detect pinch gesture
+      // Detect pinch gesture (thumb + index)
       const pinch = this.detectPinch(hand, handType, timestamp);
       if (pinch) {
         events.push(pinch);
         pinchEvent = pinch;
+      }
+
+      // Detect middle pinch gesture (thumb + middle finger for Black Hole)
+      const middlePinch = this.detectMiddlePinch(hand, handType, timestamp);
+      if (middlePinch) {
+        events.push(middlePinch);
+        middlePinchEvent = middlePinch;
       }
 
       // Detect fist gesture
@@ -131,6 +159,7 @@ export class GestureDetector {
     return {
       events,
       pinch: pinchEvent,
+      middlePinch: middlePinchEvent,
       fist: fistEvent,
     };
   }
@@ -327,6 +356,112 @@ export class GestureDetector {
 
     return {
       type: GestureType.PINCH,
+      state: gestureState,
+      data,
+      timestamp,
+    };
+  }
+
+  /**
+   * Detect middle finger pinch gesture (thumb + middle finger) for Black Hole effect
+   *
+   * This gesture triggers the gravitational vortex effect:
+   * - STARTED: Begin charging the black hole
+   * - ACTIVE: Continue charging (particles spiral inward)
+   * - ENDED: Release burst (supernova explosion)
+   *
+   * @param landmarks - Single hand landmarks
+   * @param handedness - Which hand ('left' or 'right')
+   * @param timestamp - Current timestamp in milliseconds
+   * @returns Middle pinch gesture event or null
+   */
+  private detectMiddlePinch(
+    landmarks: NormalizedLandmark[],
+    handedness: Handedness,
+    timestamp: number
+  ): MiddlePinchGestureEvent | null {
+    const thumbTip = landmarks[HandLandmarkIndex.THUMB_TIP];
+    const middleTip = landmarks[HandLandmarkIndex.MIDDLE_FINGER_TIP];
+
+    // Calculate distance between thumb and middle finger tips
+    const distance = this.calculateDistance3D(thumbTip, middleTip);
+
+    // Get state tracker for this hand
+    const handKey = handedness === 'left' ? 'left' : 'right';
+    const handState = this.state.middlePinch[handKey];
+
+    // Determine gesture state
+    const wasActive = handState.isActive;
+    const isPinching = distance < this.config.middlePinch.threshold;
+    const isReleased = distance > this.config.middlePinch.releaseThreshold;
+
+    // Check cooldown (only for initial trigger)
+    const cooldownElapsed =
+      timestamp - handState.lastTriggerTime > this.config.middlePinch.cooldownMs;
+
+    // Track sustained pinch frames (require 3 consecutive frames for stability)
+    const REQUIRED_SUSTAINED_FRAMES = 3;
+    if (isPinching) {
+      handState.sustainedFrames++;
+    } else {
+      handState.sustainedFrames = 0;
+    }
+
+    const isSustainedPinch = handState.sustainedFrames >= REQUIRED_SUSTAINED_FRAMES;
+
+    let gestureState: GestureState;
+
+    if (!wasActive && isSustainedPinch && cooldownElapsed) {
+      // Gesture just started - begin black hole charging
+      gestureState = GestureState.STARTED;
+      handState.isActive = true;
+      handState.lastTriggerTime = timestamp;
+      handState.holdStartTime = timestamp;
+    } else if (wasActive && isPinching) {
+      // Gesture continuing - black hole is charging
+      gestureState = GestureState.ACTIVE;
+    } else if (wasActive && isReleased) {
+      // Gesture ended - trigger supernova burst
+      gestureState = GestureState.ENDED;
+      handState.isActive = false;
+      handState.sustainedFrames = 0;
+    } else if (!wasActive && !isSustainedPinch) {
+      // No gesture detected (or not yet sustained)
+      return null;
+    } else {
+      // In hysteresis zone - maintain current state
+      gestureState = wasActive ? GestureState.ACTIVE : GestureState.IDLE;
+      if (gestureState === GestureState.IDLE) return null;
+    }
+
+    // Calculate pinch position (midpoint between thumb and middle finger)
+    const midX = (thumbTip.x + middleTip.x) / 2;
+    const midY = (thumbTip.y + middleTip.y) / 2;
+    const midZ = (thumbTip.z + middleTip.z) / 2;
+
+    // Convert to Three.js world coordinates
+    const worldPosition = new THREE.Vector3(-(midX - 0.5) * 10, -(midY - 0.5) * 10, -midZ * 10);
+
+    // Calculate pinch strength (inverse of distance, normalized)
+    const strength = Math.max(
+      0,
+      Math.min(1, 1 - distance / this.config.middlePinch.releaseThreshold)
+    );
+
+    // Calculate hold duration for charge intensity
+    const holdDuration = wasActive ? timestamp - handState.holdStartTime : 0;
+
+    const data: MiddlePinchGestureData = {
+      position: worldPosition,
+      normalizedPosition: { x: midX, y: midY, z: midZ },
+      distance,
+      handedness,
+      strength,
+      holdDuration,
+    };
+
+    return {
+      type: GestureType.MIDDLE_PINCH,
       state: gestureState,
       data,
       timestamp,

@@ -14,6 +14,7 @@ import {
   type Handedness,
   type PinchGestureData,
   type FistGestureData,
+  type MiddlePinchGestureData,
 } from '../shared/GestureTypes';
 import { HandLandmarkOverlay } from '../shared/HandLandmarkOverlay';
 import { StellarWaveRenderer } from './StellarWaveRenderer';
@@ -21,6 +22,7 @@ import { StellarWaveAudioManager } from './StellarWaveAudioManager';
 import {
   DEFAULT_STELLAR_WAVE_CONFIG,
   StellarWaveState,
+  QuasarSurgePhase,
   type StellarWaveConfig,
   type StellarWaveDebugInfo,
 } from './types';
@@ -258,11 +260,12 @@ export class StellarWaveController {
     let leftPinchActive = false;
     let rightFistActive = false;
     let leftFistActive = false;
+    let quasarSurgeActive = false;
 
     // Process all gesture events to handle multiple hands and interactions
     for (const event of gestureResult.events) {
       // ----------------------------------------------------------------
-      // 1. COSMIC PULSE & FORCE FIELD (Pinch gestures)
+      // 1. COSMIC PULSE & FORCE FIELD (Pinch gestures - thumb + index)
       // ----------------------------------------------------------------
       if (event.type === GestureType.PINCH) {
         const pinchData = event.data as PinchGestureData;
@@ -286,7 +289,34 @@ export class StellarWaveController {
       }
 
       // ----------------------------------------------------------------
-      // 2. GRAVITY WELL & NEBULA VORTEX (Fist Gestures)
+      // 2. QUASAR SURGE (Middle Pinch - thumb + middle finger on right hand)
+      // ----------------------------------------------------------------
+      if (event.type === GestureType.MIDDLE_PINCH) {
+        const middlePinchData = event.data as MiddlePinchGestureData;
+
+        // Only trigger on right hand
+        if (middlePinchData.handedness === 'right') {
+          if (event.state === GestureState.STARTED || event.state === GestureState.ACTIVE) {
+            // Charging phase - particles spiral inward
+            const { x, y } = middlePinchData.normalizedPosition;
+
+            // Calculate charge intensity based on hold duration
+            const maxChargeTime = this.config.quasarSurgeMaxChargeTime;
+            const chargeIntensity = Math.min(1, middlePinchData.holdDuration / maxChargeTime);
+
+            this.renderer?.startQuasarSurgeCharge(x, y, chargeIntensity);
+            this.audioManager?.startQuasarSurgeCharge(chargeIntensity);
+            quasarSurgeActive = true;
+          } else if (event.state === GestureState.ENDED) {
+            // Burst phase - supernova explosion on release
+            const intensity = this.renderer?.triggerQuasarSurgeBurst() || 0;
+            this.audioManager?.playQuasarSurgeBurst(intensity);
+          }
+        }
+      }
+
+      // ----------------------------------------------------------------
+      // 3. GRAVITY WELL & NEBULA VORTEX (Fist Gestures)
       // ----------------------------------------------------------------
       if (
         event.type === GestureType.FIST &&
@@ -310,7 +340,7 @@ export class StellarWaveController {
     }
 
     // ----------------------------------------------------------------
-    // 3. CLEANUP / STATE SYNC
+    // 4. CLEANUP / STATE SYNC
     // Clear interactions if the corresponding gesture is not active
     // ----------------------------------------------------------------
     if (!leftPinchActive) {
@@ -326,6 +356,17 @@ export class StellarWaveController {
     if (!leftFistActive) {
       this.renderer?.setVortex(null, null);
       this.audioManager?.stopVortex();
+    }
+
+    if (!quasarSurgeActive) {
+      // Only clear if not in bursting phase (let burst complete naturally)
+      const currentPhase = this.renderer?.getQuasarSurgePhase();
+      if (currentPhase === QuasarSurgePhase.CHARGING) {
+        // If charging was interrupted, still trigger the burst
+        const intensity = this.renderer?.triggerQuasarSurgeBurst() || 0;
+        this.audioManager?.playQuasarSurgeBurst(intensity);
+      }
+      this.audioManager?.stopQuasarSurgeCharge();
     }
   }
 

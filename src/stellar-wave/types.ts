@@ -12,7 +12,7 @@
  */
 export interface MeshPoint {
   /** Current position in screen coordinates (pixels) */
-  position: { x: number; y: number };
+  position: { x: number; y: number; z?: number };
 
   /** Rest position - where the dot returns to after disturbance */
   restPosition: { x: number; y: number };
@@ -73,6 +73,22 @@ export interface StellarWaveConfig {
   /** Strength of rotational force */
   vortexStrength: number;
 
+  // Quasar Surge params
+  /** Radius of quasar surge gravitational influence in pixels */
+  quasarSurgeRadius: number;
+  /** Base attraction strength for quasar surge vortex */
+  quasarSurgeStrength: number;
+  /** Speed of spiral rotation during charging */
+  quasarSurgeSpiralSpeed: number;
+  /** Minimum charge time before burst can occur (ms) */
+  quasarSurgeMinChargeTime: number;
+  /** Maximum charge time for full power burst (ms) */
+  quasarSurgeMaxChargeTime: number;
+  /** Base velocity for burst explosion */
+  quasarSurgeBurstVelocity: number;
+  /** Duration of burst effect in seconds */
+  quasarSurgeBurstDuration: number;
+
   // Audio params
   /** Frequency of the ripple sound in Hz */
   rippleFreq: number;
@@ -115,6 +131,15 @@ export const DEFAULT_STELLAR_WAVE_CONFIG: StellarWaveConfig = {
   // Vortex params
   vortexRadius: 200,
   vortexStrength: 4.0,
+
+  // Quasar Surge params
+  quasarSurgeRadius: 1000,
+  quasarSurgeStrength: 10.0,
+  quasarSurgeSpiralSpeed: 3.0,
+  quasarSurgeMinChargeTime: 300,
+  quasarSurgeMaxChargeTime: 3000,
+  quasarSurgeBurstVelocity: 25.0,
+  quasarSurgeBurstDuration: 1.5,
 
   // Audio params
   rippleFreq: 440,
@@ -184,4 +209,45 @@ export enum StellarWaveInteraction {
    * Creates a spiraling, rotational force field.
    */
   NEBULA_VORTEX = 'NEBULA_VORTEX',
+
+  /**
+   * Quasar Surge
+   * Triggered by pinching right middle finger and thumb.
+   * Two-phase interaction:
+   * - Charging: Particles spiral inward toward pinch point
+   * - Burst: Supernova-like explosion on release
+   */
+  QUASAR_SURGE = 'QUASAR_SURGE',
+}
+
+/**
+ * Phase of the Quasar Surge interaction
+ */
+export enum QuasarSurgePhase {
+  /** No quasar surge active */
+  INACTIVE = 'INACTIVE',
+  /** Charging phase - particles spiraling inward */
+  CHARGING = 'CHARGING',
+  /** Burst phase - particles exploding outward */
+  BURSTING = 'BURSTING',
+}
+
+/**
+ * State tracking for the Quasar Surge effect
+ */
+export interface QuasarSurgeState {
+  /** Current phase of the quasar surge */
+  phase: QuasarSurgePhase;
+  /** Center position in screen coordinates */
+  center: { x: number; y: number };
+  /** Time when charging started (seconds, animation clock) */
+  chargeStartTime: number;
+  /** Duration of charge in seconds */
+  chargeDuration: number;
+  /** Charge intensity (0-1, based on hold duration) */
+  chargeIntensity: number;
+  /** Time when burst started (seconds, animation clock) */
+  burstStartTime: number;
+  /** Stored particle velocities for burst effect */
+  storedEnergy: number;
 }
