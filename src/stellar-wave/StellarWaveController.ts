@@ -300,7 +300,8 @@ export class StellarWaveController {
       if (event.type === GestureType.MIDDLE_PINCH) {
         const middlePinchData = event.data as MiddlePinchGestureData;
 
-        if (middlePinchData.handedness === 'left') {
+        // Allow both hands for Gravity Well for better robustness
+        if (middlePinchData.handedness === 'left' || middlePinchData.handedness === 'right') {
           if (event.state === GestureState.STARTED || event.state === GestureState.ACTIVE) {
             const { x, y } = middlePinchData.normalizedPosition;
             this.renderer?.setGravityWell(x, y);
@@ -333,7 +334,8 @@ export class StellarWaveController {
       if (event.type === GestureType.RING_PINCH) {
         const ringPinchData = event.data as RingPinchGestureData;
 
-        if (ringPinchData.handedness === 'left') {
+        // Allow both hands for Nebula Vortex
+        if (ringPinchData.handedness === 'left' || ringPinchData.handedness === 'right') {
           if (event.state === GestureState.STARTED || event.state === GestureState.ACTIVE) {
             const { x, y } = ringPinchData.normalizedPosition;
             this.renderer?.setVortex(x, y);
@@ -350,7 +352,8 @@ export class StellarWaveController {
         const fistData = event.data as FistGestureData;
         const { x, y } = fistData.normalizedPosition;
 
-        if (fistData.handedness === 'left') {
+        // Allow both hands for Quasar Surge
+        if (fistData.handedness === 'left' || fistData.handedness === 'right') {
           if (event.state === GestureState.STARTED || event.state === GestureState.ACTIVE) {
             // Charging phase - particles spiral inward based on hold duration
             const maxChargeTime = this.config.quasarSurgeMaxChargeTime;

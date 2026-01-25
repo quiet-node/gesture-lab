@@ -357,8 +357,8 @@ export class GestureDetector {
     // Check cooldown
     const cooldownElapsed = timestamp - handState.lastTriggerTime > this.config.pinch.cooldownMs;
 
-    // Track sustained pinch frames (require 3 consecutive frames before triggering)
-    const REQUIRED_SUSTAINED_FRAMES = 3;
+    // Track sustained pinch frames (require 1 frame for instant reaction)
+    const REQUIRED_SUSTAINED_FRAMES = 1;
     if (isPinching) {
       handState.sustainedFrames++;
     } else {
@@ -460,8 +460,8 @@ export class GestureDetector {
     const cooldownElapsed =
       timestamp - handState.lastTriggerTime > this.config.middlePinch.cooldownMs;
 
-    // Track sustained pinch frames (require 3 consecutive frames for stability)
-    const REQUIRED_SUSTAINED_FRAMES = 3;
+    // Track sustained pinch frames (require 1 frame for instant trigger)
+    const REQUIRED_SUSTAINED_FRAMES = 1;
     if (isPinching) {
       handState.sustainedFrames++;
     } else {
@@ -561,7 +561,7 @@ export class GestureDetector {
     const cooldownElapsed =
       timestamp - handState.lastTriggerTime > this.config.ringPinch.cooldownMs;
 
-    const REQUIRED_SUSTAINED_FRAMES = 3;
+    const REQUIRED_SUSTAINED_FRAMES = 1; // Instant reaction
     if (isPinching) {
       handState.sustainedFrames++;
     } else {

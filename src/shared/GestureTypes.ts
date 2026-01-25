@@ -236,19 +236,19 @@ export interface GestureConfig {
  */
 export const DEFAULT_GESTURE_CONFIG: GestureConfig = {
   pinch: {
-    threshold: 0.035, // Slightly more lenient than 0.03 for better UX
-    releaseThreshold: 0.055, // Hysteresis to prevent flickering
-    cooldownMs: 800, // 800ms between star bursts (prevent spam)
+    threshold: 0.06, // Looser for better UX
+    releaseThreshold: 0.1, // More hysteresis
+    cooldownMs: 400, // Reduced cooldown for snappier pulses
   },
   middlePinch: {
-    threshold: 0.04, // Slightly larger threshold for middle finger (harder to pinch precisely)
-    releaseThreshold: 0.06, // Hysteresis for smooth release detection
-    cooldownMs: 200, // Short cooldown - charging effect handles debouncing
+    threshold: 0.07, // Looser
+    releaseThreshold: 0.11,
+    cooldownMs: 150,
   },
   ringPinch: {
-    threshold: 0.04, // Same as middle pinch
-    releaseThreshold: 0.06,
-    cooldownMs: 200,
+    threshold: 0.07,
+    releaseThreshold: 0.11,
+    cooldownMs: 150,
   },
   pinkyPinch: {
     threshold: 0.08, // Significantly looser to ensure detection with smaller fingers
@@ -256,9 +256,9 @@ export const DEFAULT_GESTURE_CONFIG: GestureConfig = {
     cooldownMs: 200,
   },
   fist: {
-    closeThreshold: 1.0, // Tip dist must be < 1.0x scale (tight fist)
-    openThreshold: 1.4, // Tip dist must be > 1.4x scale to open
-    minDurationFrames: 5, // Require 5 frames of stability
+    closeThreshold: 1.2, // Much more lenient detection
+    openThreshold: 1.6, // More hysteresis for stable hold
+    minDurationFrames: 1, // Instant reaction
   },
 };
 

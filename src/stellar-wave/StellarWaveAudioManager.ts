@@ -453,6 +453,61 @@ export class StellarWaveAudioManager {
     this.isStringTensionPlaying = false;
   }
 
+  /**
+   * Play the one-shot cosmic string pluck sound (snap back).
+   * Creates a percussive, elastic sound with high-frequency initial transient.
+   */
+  playCosmicStringPluck(): void {
+    if (!this.isInitialized || !this.audioContext) {
+      return;
+    }
+
+    if (this.audioContext.state === 'suspended') {
+      this.audioContext.resume();
+    }
+
+    try {
+      const ctx = this.audioContext;
+      const now = ctx.currentTime;
+      const duration = 0.6; // Slightly shorter for snappier feel
+
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      const filter = ctx.createBiquadFilter();
+
+      // Sharp triangle wave for the pluck impact
+      osc.type = 'triangle';
+      // Start higher for more "snap"
+      osc.frequency.setValueAtTime(660, now);
+      osc.frequency.exponentialRampToValueAtTime(165, now + 0.15);
+
+      filter.type = 'lowpass';
+      filter.frequency.setValueAtTime(3000, now);
+      filter.frequency.exponentialRampToValueAtTime(400, now + 0.25);
+      filter.Q.value = 5; // Add some resonance for more "string" character
+
+      gain.gain.setValueAtTime(0, now);
+      // Fast attack for percussive hit
+      gain.gain.linearRampToValueAtTime(0.3, now + 0.005);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+
+      osc.connect(filter);
+      filter.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc.start(now);
+      osc.stop(now + duration);
+
+      osc.onended = () => {
+        osc.disconnect();
+        filter.disconnect();
+        gain.disconnect();
+      };
+    } catch (e) {
+      console.error('[StellarWaveAudioManager] Failed to play pluck sound', e);
+    }
+  }
+
   // --- Quasar Surge Sound (Right Hand Middle Finger + Thumb Pinch) ---
   // Charging: Deep, ominous rumble that builds intensity
   // Burst: Powerful explosive release with cosmic overtones
