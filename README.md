@@ -56,6 +56,19 @@ Clear the mist to reveal reality.
 
 https://github.com/user-attachments/assets/65dfe3ac-6dc1-4339-be15-adaa11671228
 
+### 5. Stellar Wave
+
+Manipulate the fabric of space-time with an elegant, spring-based dot grid.
+
+- **Gestures**:
+  - **Cosmic Pulse**: Right hand pinch to trigger ripples.
+  - **Force Field**: Left hand pinch for repulsion.
+  - **Gravity Well**: Both hands middle pinch for attraction.
+  - **Nebula Vortex**: Both hands ring pinch for rotation.
+  - **Quasar Surge**: Fist to charge, release for massive burst.
+  - **Cosmic Strings**: Both hands pinky pinch to pluck the grid.
+- [Design Document](docs/DESIGN-STELLAR-WAVE.md)
+
 ## 🚀 Quick Start
 
 ```bash
@@ -78,6 +91,7 @@ bun validate-build
 - **C**: Switch to Cosmic Slash Mode
 - **G**: Switch to Galaxy Mode
 - **F**: Switch to Foggy Mirror Mode
+- **S**: Switch to Stellar Wave Mode
 - **H**: Toggle Hints
 - **D**: Toggle Debug Panel
 - **Esc**: Stop/Dispose
