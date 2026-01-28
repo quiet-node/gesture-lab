@@ -14,6 +14,8 @@ import { WorkshopController } from './iron-man-workshop/WorkshopController';
 import { WorkshopDebugInfo } from './iron-man-workshop/types';
 import { StellarWaveController } from './stellar-wave/StellarWaveController';
 import { StellarWaveDebugInfo } from './stellar-wave/types';
+import { LightBulbController } from './light-bulb/LightBulbController';
+import { LightBulbDebugInfo } from './light-bulb/types';
 import { HandTracker } from './shared/HandTracker';
 import { DebugComponent } from './ui/DebugComponent';
 import { Footer } from './ui/Footer';
@@ -55,6 +57,7 @@ export class App {
   private cosmicSlashController: CosmicSlashController | null = null;
   private workshopController: WorkshopController | null = null;
   private stellarWaveController: StellarWaveController | null = null;
+  private lightBulbController: LightBulbController | null = null;
   private config: AppConfig;
   private currentMode: InteractionMode | null = null;
 
@@ -171,6 +174,8 @@ export class App {
         this.switchToFoggyMirrorMode();
       } else if (mode === 'stellar-wave') {
         this.switchToStellarWaveMode();
+      } else if (mode === 'light-bulb') {
+        this.switchToLightBulbMode();
       }
     });
 
@@ -255,6 +260,9 @@ export class App {
       } else if (key === 's') {
         this.switchToStellarWaveMode();
         return;
+      } else if (key === 'l') {
+        this.switchToLightBulbMode();
+        return;
       }
 
       // Mode specific shortcuts
@@ -270,6 +278,8 @@ export class App {
           this.workshopController?.reset();
         } else if (this.currentMode === 'stellar-wave') {
           this.stellarWaveController?.reset();
+        } else if (this.currentMode === 'light-bulb') {
+          this.lightBulbController?.reset();
         }
         return;
       }
@@ -338,6 +348,14 @@ export class App {
       this.stellarWaveController.disableDebug();
       this.stellarWaveController.dispose();
       this.stellarWaveController = null;
+    }
+
+    // Stop light bulb controller
+    if (this.lightBulbController) {
+      this.lightBulbController.stop();
+      this.lightBulbController.disableDebug();
+      this.lightBulbController.dispose();
+      this.lightBulbController = null;
     }
   }
 
@@ -435,6 +453,8 @@ export class App {
       this.workshopController.enableDebug((info) => this.updateWorkshopDebugPanel(info));
     } else if (this.currentMode === 'stellar-wave' && this.stellarWaveController) {
       this.stellarWaveController.enableDebug((info) => this.updateStellarWaveDebugPanel(info));
+    } else if (this.currentMode === 'light-bulb' && this.lightBulbController) {
+      this.lightBulbController.enableDebug((info) => this.updateLightBulbDebugPanel(info));
     }
   }
 
@@ -536,6 +556,9 @@ export class App {
       } else if (this.currentMode === 'stellar-wave') {
         const handCount = this.stellarWaveController?.getHandCount() ?? 0;
         this.updateHandStatus(handCount);
+      } else if (this.currentMode === 'light-bulb') {
+        const handCount = this.lightBulbController?.getHandCount() ?? 0;
+        this.updateHandStatus(handCount);
       }
       // Note: foggy-mirror mode has its own update loop in FoggyMirrorController
 
@@ -569,6 +592,7 @@ export class App {
       this.cosmicSlashController?.disableDebug();
       this.workshopController?.disableDebug();
       this.stellarWaveController?.disableDebug();
+      this.lightBulbController?.disableDebug();
     } else {
       if (this.currentMode === 'galaxy' && this.controller) {
         this.controller.enableDebug((info) => this.updateGalaxyDebugPanel(info));
@@ -580,6 +604,8 @@ export class App {
         this.workshopController.enableDebug((info) => this.updateWorkshopDebugPanel(info));
       } else if (this.currentMode === 'stellar-wave' && this.stellarWaveController) {
         this.stellarWaveController.enableDebug((info) => this.updateStellarWaveDebugPanel(info));
+      } else if (this.currentMode === 'light-bulb' && this.lightBulbController) {
+        this.lightBulbController.enableDebug((info) => this.updateLightBulbDebugPanel(info));
       }
     }
   }
@@ -624,6 +650,10 @@ export class App {
       // Dim video for stellar wave to make dots more visible
       this.videoElement.style.cssText =
         baseStyles + 'filter: brightness(0.2) contrast(0.7) saturate(0.8);';
+    } else if (mode === 'light-bulb') {
+      // Dark background for dramatic light bulb effect - makes glow more visible
+      this.videoElement.style.cssText =
+        baseStyles + 'filter: brightness(0.1) contrast(0.7) saturate(0.5);';
     } else {
       // Full brightness for foggy-mirror mode
       this.videoElement.style.cssText = baseStyles + 'filter: none;';
@@ -960,6 +990,80 @@ export class App {
   }
 
   /**
+   * Switch to light bulb interaction mode
+   */
+  switchToLightBulbMode(): void {
+    if (this.currentMode === 'light-bulb') return;
+
+    console.log('[App] Switching to light-bulb mode');
+
+    // Hide landing page
+    this.landingPage?.hide();
+
+    // Stop any currently active mode
+    this.stopCurrentMode();
+
+    // Initialize light bulb controller if needed
+    if (!this.lightBulbController) {
+      this.updateStatus('Loading Light Bulb...', 'loading');
+      this.lightBulbController = new LightBulbController(this.handTracker, this.container, {
+        debug: this.config.debug,
+      });
+      this.lightBulbController.initialize();
+    }
+
+    // Start light bulb controller
+    this.lightBulbController.start();
+
+    // Apply video styles - moderate dim to make 3D model visible
+    this.applyVideoStyles('light-bulb');
+
+    // Update mode
+    this.currentMode = 'light-bulb';
+    this.state = 'running';
+    this.updateHandStatus(0);
+
+    // Show UI elements
+    this.footer?.show();
+    this.hintComponent?.update('light-bulb');
+    this.hintComponent?.show();
+    this.modeIndicator?.update('light-bulb');
+
+    // Start loop
+    this.startAnimationLoop();
+
+    // Show camera permission banner if camera is not enabled
+    if (!this.handTracker.isCameraEnabled()) {
+      this.cameraPermissionBanner?.show('light-bulb');
+    }
+
+    // Re-enable debug if it was active
+    if (this.debugComponent?.isVisibleState()) {
+      this.lightBulbController.enableDebug((info) => this.updateLightBulbDebugPanel(info));
+    }
+  }
+
+  /**
+   * Update light bulb debug panel with current info
+   */
+  private updateLightBulbDebugPanel(info: LightBulbDebugInfo): void {
+    if (!this.debugComponent) return;
+
+    this.debugComponent.update(`
+      <div style="margin-bottom: 8px; color: #fff; font-weight: bold;">Debug Info</div>
+      <div>FPS: ${info.fps.toFixed(1)}</div>
+      <div>Hands: ${info.handsDetected}</div>
+      <div>Light: ${info.isLightOn ? '<span style="color: #ffd700;">ON</span>' : 'OFF'}</div>
+      <div>State: ${info.interactionState}</div>
+      <div style="margin-top: 4px; border-top: 1px solid rgba(255,255,255,0.2); padding-top: 4px;">
+        <div>Rotation X: ${info.rotationX.toFixed(1)}°</div>
+        <div>Rotation Y: ${info.rotationY.toFixed(1)}°</div>
+        <div>Cord Pull: ${info.cordPullDistance.toFixed(0)}px</div>
+      </div>
+    `);
+  }
+
+  /**
    * Clean up and stop the application
    */
   dispose(): void {
@@ -977,6 +1081,7 @@ export class App {
     this.cosmicSlashController?.dispose();
     this.workshopController?.dispose();
     this.stellarWaveController?.dispose();
+    this.lightBulbController?.dispose();
     this.handTracker.dispose();
     this.galaxyRenderer?.dispose();
     this.deviceBanner?.dispose();

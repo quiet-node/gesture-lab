@@ -20,7 +20,13 @@ export class ModeIndicator {
   }
 
   update(
-    mode: 'galaxy' | 'foggy-mirror' | 'cosmic-slash' | 'iron-man-workshop' | 'stellar-wave'
+    mode:
+      | 'galaxy'
+      | 'foggy-mirror'
+      | 'cosmic-slash'
+      | 'iron-man-workshop'
+      | 'stellar-wave'
+      | 'light-bulb'
   ): void {
     if (!this.element) {
       this.createDOM();
@@ -40,7 +46,9 @@ export class ModeIndicator {
             ? 'Iron Man Workshop'
             : mode === 'stellar-wave'
               ? 'Stellar Wave'
-              : 'Foggy Mirror';
+              : mode === 'light-bulb'
+                ? 'Light Bulb'
+                : 'Foggy Mirror';
 
     content.innerHTML = `
       <div class="current-mode">${modeName}</div>

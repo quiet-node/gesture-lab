@@ -15,6 +15,7 @@ const MODE_MESSAGES: Record<InteractionMode, string> = {
   galaxy: 'Enable camera to control the galaxy with your hands',
   'foggy-mirror': 'Enable camera for the mirror effect',
   'stellar-wave': 'Enable camera for pinch-triggered ripples',
+  'light-bulb': 'Enable camera to interact with the light bulb',
 };
 
 export class CameraPermissionBanner {

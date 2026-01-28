@@ -18,7 +18,13 @@ export class HintComponent {
   }
 
   update(
-    mode: 'galaxy' | 'foggy-mirror' | 'cosmic-slash' | 'iron-man-workshop' | 'stellar-wave'
+    mode:
+      | 'galaxy'
+      | 'foggy-mirror'
+      | 'cosmic-slash'
+      | 'iron-man-workshop'
+      | 'stellar-wave'
+      | 'light-bulb'
   ): void {
     if (!this.element) {
       this.createDOM();
@@ -101,6 +107,27 @@ export class HintComponent {
           </div>
           <div class="hint-row">
             <span class="hint-label">System Reset</span>
+            <span class="hint-value">Press <kbd>R</kbd></span>
+          </div>
+        </div>
+      `;
+    } else if (mode === 'light-bulb') {
+      content.innerHTML = `
+        <div class="hint-header">
+          <span class="hint-title">Light Bulb</span>
+          <span class="hint-subtitle">Interaction Guide</span>
+        </div>
+        <div class="hint-grid">
+          <div class="hint-row">
+            <span class="hint-label">Rotate Bulb</span>
+            <span class="hint-value">Pinch + Drag</span>
+          </div>
+          <div class="hint-row">
+            <span class="hint-label">Toggle Light</span>
+            <span class="hint-value">Pinch Cord + Pull</span>
+          </div>
+          <div class="hint-row">
+            <span class="hint-label">Reset</span>
             <span class="hint-value">Press <kbd>R</kbd></span>
           </div>
         </div>

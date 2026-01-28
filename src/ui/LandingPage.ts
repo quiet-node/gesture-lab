@@ -8,7 +8,8 @@ export type InteractionMode =
   | 'foggy-mirror'
   | 'cosmic-slash'
   | 'iron-man-workshop'
-  | 'stellar-wave';
+  | 'stellar-wave'
+  | 'light-bulb';
 
 export class LandingPage {
   private container: HTMLElement;
@@ -88,6 +89,17 @@ export class LandingPage {
             </div>
             <div class="portal-footer">
               <span class="key-hint">Press <kbd>S</kbd></span>
+            </div>
+            <div class="portal-bg"></div>
+          </button>
+
+          <button class="portal-card bulb-portal" data-mode="light-bulb">
+            <div class="portal-content">
+              <h2 class="portal-title">Light Bulb</h2>
+              <p class="portal-desc">Pinch to rotate, pull cord to toggle</p>
+            </div>
+            <div class="portal-footer">
+              <span class="key-hint">Press <kbd>L</kbd></span>
             </div>
             <div class="portal-bg"></div>
           </button>
@@ -229,6 +241,10 @@ export class LandingPage {
 
       .stellar-portal .portal-bg {
         background: linear-gradient(90deg, rgba(100, 200, 255, 0.1), transparent);
+      }
+
+      .bulb-portal .portal-bg {
+        background: linear-gradient(90deg, rgba(255, 244, 224, 0.15), transparent);
       }
 
       .portal-card:hover {
