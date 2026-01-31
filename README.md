@@ -79,6 +79,10 @@ A physics-based simulation of an incandescent light bulb with realistic cord dyn
   - **Break**: Aggressive pulls snap the cord (Material Fatigue).
 - [Design Document](docs/DESIGN-LIGHT-BULB.md)
 
+https://github.com/user-attachments/assets/2ede99fe-4c66-451c-a039-e1c1b2bc975c
+
+
+
 ## 🚀 Quick Start
 
 ```bash
