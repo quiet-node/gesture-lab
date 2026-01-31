@@ -28,15 +28,19 @@ import {
   LightBulbState,
   InteractionState,
   LightState,
+  CordState,
   type LightBulbConfig,
   type LightBulbDebugInfo,
   type CordPullState,
+  type CordFatigueState,
   type RotationState,
 } from './types';
 
 import { PostProcessingPipeline } from './components/PostProcessingPipeline';
 import { FilamentGlowMesh, COLOR_TEMPERATURES } from './components/FilamentGlowMesh';
 import { IncandescentAnimator, type LightAnimationState } from './components/IncandescentAnimator';
+import { CordSimulator } from './physics/CordSimulator';
+import { CordMesh } from './components/CordMesh';
 
 /** Path to the light bulb GLB model (served from public directory) */
 const LIGHT_BULB_MODEL_PATH = '/models/light-bulb.glb';
@@ -69,8 +73,14 @@ export class LightBulbController {
 
   // Model components
   private lightBulbGroup: THREE.Group | null = null;
-  private cordMesh: THREE.Mesh | null = null;
+  // Cord is now handled by CordSimulator/CordMesh, not specific GLB mesh
+  // private cordMesh: THREE.Mesh | null = null;
   private filamentMesh: THREE.Mesh | null = null;
+
+  // Physics Cord
+  private cordSimulator: CordSimulator | null = null;
+  private cordMesh: CordMesh | null = null;
+  private cordAnchor: THREE.Object3D | null = null; // Attachment point on the bulb socket
 
   // Volumetric light source for God Rays effect
   private filamentGlow: FilamentGlowMesh;
@@ -101,7 +111,6 @@ export class LightBulbController {
   /** Whether pinch is currently held */
   private isPinchHeld: boolean = false;
   /** Smoothing factor for rotation (0-1, higher = smoother but more lag) */
-  private readonly ROTATION_SMOOTHING = 0.3;
 
   // State management
   private state: LightBulbState = LightBulbState.UNINITIALIZED;
@@ -120,11 +129,51 @@ export class LightBulbController {
   // Cord pull state
   private cordPullState: CordPullState = {
     isGrabbing: false,
+    grabStartX: 0,
+    currentX: 0,
     grabStartY: 0,
     currentY: 0,
     pullDistance: 0,
     feedbackIntensity: 0,
+    hasToggled: false,
   };
+
+  // Cord breaking state
+  private cordState: CordState = CordState.ATTACHED;
+  private cordFatigue: CordFatigueState = {
+    stress: 0,
+    lastPullTimestamp: 0,
+    pullCount: 0,
+    pendingBreak: false,
+  };
+  private lastPullY: number = 0;
+  private lastPullTimestamp: number = 0;
+
+  /** Smoothed target position for cord end to reduce jitter (cached between frames) */
+  private smoothedCordTarget: THREE.Vector3 = new THREE.Vector3();
+  /** Lerp factor for cord position smoothing (0-1, higher = more responsive but jittery) */
+  private readonly CORD_POSITION_SMOOTHING = 0.3;
+
+  // Cord break configuration constants
+  /** Minimum pull velocity (normalized units/sec) for "aggressive" pull */
+  private readonly AGGRESSIVE_PULL_VELOCITY = 1.2;
+  /** Extension threshold (multiplier of natural length) to allow breaking */
+  private readonly EXTENSION_BREAK_THRESHOLD = 1.4;
+  /** Stress added per aggressive pull */
+  private readonly STRESS_PER_PULL = 0.35;
+  /** Stress decay rate per second when idle */
+  private readonly STRESS_DECAY_RATE = 0.02;
+  /** Stress threshold to enable break probability */
+  private readonly BREAK_THRESHOLD = 0.7;
+  /** Probability of break per aggressive pull above threshold */
+  private readonly BREAK_PROBABILITY = 0.75;
+  /** Minimum upward velocity (world units/sec) to trigger deferred break on bounce */
+  private readonly UPWARD_BOUNCE_BREAK_VELOCITY = 1.5;
+  /** Maximum stretch (multiplier of natural length) before instant break */
+  private readonly MAX_STRETCH_BEFORE_SNAP = 2.2;
+
+  // Keyboard listener reference for cleanup
+  private keydownHandler: ((e: KeyboardEvent) => void) | null = null;
 
   // Cord bounding box for collision detection (reserved for enhanced hit detection)
 
@@ -142,7 +191,7 @@ export class LightBulbController {
   private currentFps: number = 60;
   private lastHandCount: number = 0;
 
-  // Raycaster for cord collision
+  // Raycaster for cord collision (will cast against cord mesh)
   private raycaster: THREE.Raycaster = new THREE.Raycaster();
 
   // Pre-allocated vectors for performance (reserved for future optimizations)
@@ -321,6 +370,14 @@ export class LightBulbController {
     // Setup window resize handler
     this.setupResizeHandler();
 
+    // Setup R-key reset handler
+    this.keydownHandler = (e: KeyboardEvent) => {
+      if (e.key === 'r' || e.key === 'R') {
+        this.resetCord();
+      }
+    };
+    window.addEventListener('keydown', this.keydownHandler);
+
     this.state = LightBulbState.READY;
     console.log('[LightBulbController] Initialized');
   }
@@ -350,6 +407,9 @@ export class LightBulbController {
     });
   }
 
+  // Placeholder for dynamically found anchor position from the model
+  private foundCordAnchorPos: THREE.Vector3 | null = null;
+
   /**
    * Process the loaded GLTF model and setup materials.
    *
@@ -377,9 +437,32 @@ export class LightBulbController {
         name.includes('rope') ||
         name.includes('pull')
       ) {
-        console.log(`[LightBulbController] Identified cord mesh: "${mesh.name}"`);
-        this.cordMesh = mesh;
-        this.setupCordMaterial(mesh);
+        // Calculate the attachment point (top of the cord)
+        // We assume the cord hangs down, so the highest point (max Y) of its bounding box
+        // in its local space (relative to the bulb) is the attachment point.
+        mesh.geometry.computeBoundingBox();
+        if (mesh.geometry.boundingBox) {
+          const box = mesh.geometry.boundingBox;
+
+          // Find top center in geometry local space
+          const topCenter = new THREE.Vector3(
+            (box.min.x + box.max.x) / 2,
+            box.max.y,
+            (box.min.z + box.max.z) / 2
+          );
+
+          // transform to parent space (the model root space)
+          mesh.updateMatrix();
+          topCenter.applyMatrix4(mesh.matrix);
+
+          this.foundCordAnchorPos = topCenter;
+          console.log(
+            `[LightBulbController] Found Cord Anchor at: ${topCenter.x.toFixed(3)}, ${topCenter.y.toFixed(3)}, ${topCenter.z.toFixed(3)}`
+          );
+        }
+
+        // Hide the static cord mesh as we replace it with physics cord
+        mesh.visible = false;
       } else if (name.includes('bulb') || name.includes('glass') || name.includes('lamp')) {
         this.setupBulbMaterial(mesh);
       } else if (name.includes('filament') || name.includes('wire') || name.includes('glow')) {
@@ -387,13 +470,6 @@ export class LightBulbController {
         this.setupFilamentMaterial(mesh);
       }
     });
-
-    // If no cord mesh found, log a warning
-    if (!this.cordMesh) {
-      console.warn(
-        '[LightBulbController] No cord mesh found. Cord pull detection will use fallback spatial region.'
-      );
-    }
 
     // Add the entire model to our group
     this.lightBulbGroup.add(gltf.scene);
@@ -411,7 +487,13 @@ export class LightBulbController {
     // Rotate slightly to show the cord at an angle
     this.lightBulbGroup.rotation.y = 5; // Rotate to show cord
 
+    // UX FIX: Move the bulb higher up to give more room for the cord
+    this.lightBulbGroup.position.y += 0.6;
+
     this.scene.add(this.lightBulbGroup);
+
+    // Initialize Cord Physics
+    this.initializeCordPhysics(scale);
 
     // Position filament glow mesh at the bulb center for God Rays
     this.positionFilamentGlow();
@@ -419,13 +501,59 @@ export class LightBulbController {
     // Setup God Rays post-processing with the filament glow mesh
     this.postProcessing.setup(this.filamentGlow.mesh);
 
-    // Update cord bounding box for collision detection
-    this.updateCordBoundingBox();
-
     // Apply initial light state (OFF)
     this.applyLightState(LightState.OFF, false);
 
     console.log('[LightBulbController] Model processed successfully');
+  }
+
+  /**
+   * Initialize the physics-based cord simulator and mesh.
+   *
+   * @param modelScale - Scale factor applied to the model, to match cord dimensions
+   */
+  private initializeCordPhysics(modelScale: number): void {
+    if (!this.lightBulbGroup) return;
+
+    // Create a virtual anchor point attached to the bulb group
+    // This allows the cord to move when the bulb rotates
+    this.cordAnchor = new THREE.Object3D();
+
+    // Position anchor at the found position or fallback
+    if (this.foundCordAnchorPos) {
+      // Use the dynamically found position from the GLB
+      this.cordAnchor.position.copy(this.foundCordAnchorPos);
+      console.log('[LightBulbController] Using dynamic cord anchor position');
+    } else {
+      // Fallback: estimate based on typical bulb proportions if mesh not found
+      console.warn('[LightBulbController] Cord mesh not found, using fallback anchor');
+      this.cordAnchor.position.set(0.08, -0.45, 0.08);
+    }
+
+    // Add anchor to the rotatable group so it moves with it
+    this.lightBulbGroup.add(this.cordAnchor);
+    this.cordAnchor.updateWorldMatrix(true, false);
+
+    // Create Simulator
+    const worldPos = new THREE.Vector3();
+    this.cordAnchor.getWorldPosition(worldPos);
+
+    this.cordSimulator = new CordSimulator(worldPos, {
+      totalLength: 0.5 * modelScale, // Scaled length
+      segmentCount: 16,
+      iterations: 10,
+    });
+
+    // Create Mesh (Beaded Chain)
+    this.cordMesh = new CordMesh(this.cordSimulator, {
+      radius: 0.012 * modelScale, // Bead radius
+      color: 0xb8860b, // Dark Golden Rod / Brass
+      roughness: 0.3,
+      metalness: 1.0,
+    });
+
+    this.scene.add(this.cordMesh.getMesh());
+    console.log('[LightBulbController] Cord physics initialized');
   }
 
   /**
@@ -477,20 +605,6 @@ export class LightBulbController {
   }
 
   /**
-   * Setup material for the pull cord.
-   *
-   * @param mesh - The cord mesh
-   */
-  private setupCordMaterial(mesh: THREE.Mesh): void {
-    const cordMaterial = new THREE.MeshStandardMaterial({
-      color: 0x8b7355, // Rope/cord brown color
-      roughness: 0.8,
-      metalness: 0.0,
-    });
-    mesh.material = cordMaterial;
-  }
-
-  /**
    * Setup material for the filament.
    *
    * @param mesh - The filament mesh
@@ -504,14 +618,6 @@ export class LightBulbController {
       metalness: 0.5,
     });
     mesh.material = this.filamentMaterial;
-  }
-
-  /**
-   * Update the bounding box for the cord mesh (reserved for enhanced collision detection).
-   */
-  private updateCordBoundingBox(): void {
-    // Reserved for future enhanced hit detection using bounding box acceleration
-    // Currently using raycaster directly against mesh geometry
   }
 
   /**
@@ -600,6 +706,11 @@ export class LightBulbController {
     // Reset light state to OFF
     this.applyLightState(LightState.OFF, true);
 
+    // Reset cord if needed
+    if (this.cordSimulator && this.cordAnchor) {
+      // Allow cord to settle naturally
+    }
+
     // Reset rotation to initial viewing angle (shows cord better)
     if (this.lightBulbGroup) {
       gsap.to(this.lightBulbGroup.rotation, {
@@ -622,10 +733,13 @@ export class LightBulbController {
     // Reset cord pull state
     this.cordPullState = {
       isGrabbing: false,
+      grabStartX: 0,
+      currentX: 0,
       grabStartY: 0,
       currentY: 0,
       pullDistance: 0,
       feedbackIntensity: 0,
+      hasToggled: false,
     };
 
     this.interactionState = InteractionState.IDLE;
@@ -666,6 +780,26 @@ export class LightBulbController {
 
       // Update rotation inertia
       this.updateRotationInertia(deltaTime);
+
+      // --- Physics Update Step ---
+      if (this.cordSimulator && this.cordAnchor) {
+        // 1. Update Anchor Position from Bulb Rotation
+        // The anchor moves because it's child of lightBulbGroup which rotates
+        const anchorPos = new THREE.Vector3();
+        this.cordAnchor.getWorldPosition(anchorPos);
+        this.cordSimulator.setAnchor(anchorPos);
+
+        // 2. Step Physics
+        this.cordSimulator.update(deltaTime);
+
+        // 3. Monitor for pending break on upward bounce
+        this.checkPendingBreakOnBounce();
+
+        // 4. Update Visual Mesh
+        if (this.cordMesh) {
+          this.cordMesh.update();
+        }
+      }
 
       // Render scene through post-processing pipeline (God Rays + Bloom + Vignette)
       this.postProcessing.render(deltaTime);
@@ -778,36 +912,38 @@ export class LightBulbController {
     // Reset cord pull state
     this.cordPullState = {
       isGrabbing: false,
+      grabStartX: 0,
+      currentX: 0,
       grabStartY: 0,
       currentY: 0,
       pullDistance: 0,
       feedbackIntensity: 0,
+      hasToggled: false,
     };
 
     this.interactionState = InteractionState.IDLE;
   }
 
   /**
-   * Reset the cord's visual state with smooth animation.
+   * Reset the cord's visual state (release grab).
    */
   private resetCordVisual(): void {
-    if (this.cordMesh) {
-      gsap.to(this.cordMesh.scale, {
-        y: 1.0,
-        duration: 0.2,
-        ease: 'power2.out',
-      });
+    // For physics cord, we must explicitly unpin cleanly
+    // to prevent it staying frozen in space if hand is lost
+    if (this.cordSimulator) {
+      const particles = this.cordSimulator.getParticlePositions();
+      const lastIndex = particles.length - 1;
+      this.cordSimulator.unpinParticle(lastIndex);
     }
   }
 
+  // -------------------------------------------------------------------------
+  // Interaction Logic Refinements
+  // -------------------------------------------------------------------------
+
   /**
    * Handle pinch gesture for rotation and cord pulling.
-   * Uses stricter thresholds and sustained frame requirements for reliable detection.
-   * Once an interaction starts (rotation/cord pull), it continues until pinch is released,
-   * regardless of position changes.
-   *
-   * @param state - Current gesture state
-   * @param data - Pinch gesture data
+   * Enforces mutually exclusive interaction zones to prevent accidental triggers.
    */
   private handlePinchGesture(state: GestureState, data: PinchGestureData): void {
     const { normalizedPosition, strength } = data;
@@ -831,31 +967,101 @@ export class LightBulbController {
     // If we're already in an active interaction, continue it regardless of position
     if (this.isPinchHeld && this.interactionState !== InteractionState.IDLE) {
       if (this.interactionState === InteractionState.PULLING_CORD) {
-        this.updateCordPull(normalizedPosition.y);
+        this.updateCordPull(normalizedPosition.x, normalizedPosition.y);
       } else if (this.interactionState === InteractionState.ROTATING) {
         this.updateRotation(normalizedPosition.x, normalizedPosition.y);
       }
       return;
     }
 
-    // Starting a new interaction - check cord collision only at start
+    // Starting a new interaction - check zones
     if (state === GestureState.STARTED || !this.isPinchHeld) {
       // Only start interaction after sustained frames threshold
       if (this.sustainedPinchFrames >= this.MIN_SUSTAINED_FRAMES) {
         this.isPinchHeld = true;
 
-        // Check if pinch is on the cord only when starting
-        const isOnCord = this.checkCordCollision(normalizedPosition.x, normalizedPosition.y);
+        // ZONE CHECK: Priority to Cord -> Bulb -> None
 
-        if (isOnCord) {
-          // Start cord pulling
-          this.startCordPull(normalizedPosition.y);
-        } else {
-          // Start rotation
-          this.startRotation(normalizedPosition.x, normalizedPosition.y);
+        // 1. Check Cord
+        if (this.checkCordCollision(normalizedPosition.x, normalizedPosition.y)) {
+          this.startCordPull(normalizedPosition.x, normalizedPosition.y);
+          return;
         }
+
+        // 2. Check Bulb (Explicit check, prevents accidental background rotation)
+        if (this.checkBulbCollision(normalizedPosition.x, normalizedPosition.y)) {
+          this.startRotation(normalizedPosition.x, normalizedPosition.y);
+          return;
+        }
+
+        // If neither hit, do nothing (ignore background pinches)
+        console.log('[LightBulbController] Pinch ignored (clicked empty space)');
       }
     }
+  }
+
+  /**
+   * Check collision with the Bulb body/glass.
+   */
+  private checkBulbCollision(normX: number, normY: number): boolean {
+    if (!this.lightBulbGroup) return false;
+
+    // Convert to NDC
+    const ndcX = -(normX * 2 - 1);
+    const ndcY = -(normY * 2 - 1);
+    const rayOrigin = new THREE.Vector2(ndcX, ndcY);
+    this.raycaster.setFromCamera(rayOrigin, this.camera);
+
+    // Raycast against the whole bulb group (excluding the cord which is checked separately)
+    // Note: lightBulbGroup contains the cordAnchor, but Raycaster checks meshes.
+    // We want to hit the bulb meshes.
+    const intersects = this.raycaster.intersectObject(this.lightBulbGroup, true);
+
+    // Filter out utility objects if needed, but usually hitting any part of the bulb model is fine
+    // The cord mesh is in the scene, NOT in lightBulbGroup (it's added to scene directly by LightBulbController via CordMesh)
+    // Wait, CordMesh adds to which group? "this.scene.add(this.cordMesh.getMesh())".
+    // So lightBulbGroup IS safe to raycast against for just the bulb.
+
+    if (intersects.length > 0) {
+      // Verify we didn't hit the cord anchor or something invisible
+      // Just check if visible
+      const hit = intersects.find((i) => i.object.visible);
+      if (hit) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /**
+   * Check if the given screen position collides with the cord.
+   */
+  private checkCordCollision(normX: number, normY: number): boolean {
+    // Check against physics cord mesh
+    if (this.cordMesh) {
+      // Convert normalized coordinates to NDC (-1 to 1)
+      const ndcX = -(normX * 2 - 1);
+      const ndcY = -(normY * 2 - 1);
+
+      // Set up raycaster
+      const rayOrigin = new THREE.Vector2(ndcX, ndcY);
+      this.raycaster.setFromCamera(rayOrigin, this.camera);
+
+      // Raycast against the generated mesh (InstancedMesh group)
+      // Use recursive=true to hit the handle as well
+      const intersects = this.raycaster.intersectObject(this.cordMesh.getRaycastObject(), true);
+
+      if (intersects.length > 0) {
+        console.log('[LightBulbController] Physics cord hit');
+        return true;
+      }
+    }
+
+    // REMOVED Fallback Spatial Region
+    // It was causing accidental hits when trying to rotate the bulb near the bottom.
+    // relying purely on raycasting for reliable interaction.
+
+    return false;
   }
 
   /**
@@ -876,138 +1082,315 @@ export class LightBulbController {
   }
 
   /**
-   * Check if the given screen position collides with the cord.
-   * Uses raycasting against cord mesh if available, otherwise falls back to
-   * a spatial region check based on expected cord location.
-   *
-   * @param normX - Normalized X position (0-1)
-   * @param normY - Normalized Y position (0-1)
-   * @returns True if colliding with cord region
-   */
-  private checkCordCollision(normX: number, normY: number): boolean {
-    // If we have a cord mesh, use raycasting
-    if (this.cordMesh && this.lightBulbGroup) {
-      // Convert normalized coordinates to NDC (-1 to 1)
-      // MediaPipe uses mirrored coordinates, so flip X
-      const ndcX = -(normX * 2 - 1);
-      const ndcY = -(normY * 2 - 1);
-
-      // Set up raycaster
-      this.raycaster.setFromCamera(new THREE.Vector2(ndcX, ndcY), this.camera);
-
-      // Check intersection with cord mesh
-      const intersects = this.raycaster.intersectObject(this.cordMesh, true);
-
-      if (intersects.length > 0) {
-        console.log('[LightBulbController] Cord hit via raycasting');
-        return true;
-      }
-    }
-
-    // Fallback: Use spatial region for cord (bottom center of the screen)
-    // The cord typically hangs below the bulb, so check if the pinch is
-    // in the lower-center portion of the viewport
-    const cordRegion = {
-      xMin: 0.35, // Left boundary (normalized)
-      xMax: 0.65, // Right boundary (normalized)
-      yMin: 0.55, // Top boundary (below center)
-      yMax: 0.85, // Bottom boundary
-    };
-
-    const isInCordRegion =
-      normX >= cordRegion.xMin &&
-      normX <= cordRegion.xMax &&
-      normY >= cordRegion.yMin &&
-      normY <= cordRegion.yMax;
-
-    if (isInCordRegion) {
-      console.log('[LightBulbController] Cord hit via spatial region fallback');
-    }
-
-    return isInCordRegion;
-  }
-
-  /**
    * Start the cord pulling interaction.
    *
+   * @param startX - Starting X position (normalized)
    * @param startY - Starting Y position (normalized)
    */
-  private startCordPull(startY: number): void {
+  private startCordPull(startX: number, startY: number): void {
     this.interactionState = InteractionState.PULLING_CORD;
     this.cordPullState = {
       isGrabbing: true,
+      grabStartX: startX,
+      currentX: startX,
       grabStartY: startY,
       currentY: startY,
       pullDistance: 0,
       feedbackIntensity: 0,
+      hasToggled: false, // Reset toggle state
     };
 
-    console.log('[LightBulbController] Cord pull started');
+    // Physics: Pin the last particle to hand control
+    if (this.cordSimulator) {
+      const particles = this.cordSimulator.getParticlePositions();
+      const lastIndex = particles.length - 1;
+      this.cordSimulator.pinParticle(lastIndex);
+
+      // Initialize smoothed target to current particle position to prevent snap
+      this.smoothedCordTarget.copy(particles[lastIndex]);
+    }
+
+    console.log('[LightBulbController] Cord pull started (Pinned)');
   }
 
   /**
    * Update the cord pulling interaction.
-   * Note: We don't physically move the cord mesh as it's a child of the rotatable group,
-   * which would cause unwanted visual side effects. Instead, we track pull distance for
-   * threshold detection.
+   * Force the last particle to follow hand movement in 2D (mapped to world space).
    *
+   * @param currentX - Current X position (normalized)
    * @param currentY - Current Y position (normalized)
    */
-  private updateCordPull(currentY: number): void {
-    if (!this.cordPullState.isGrabbing) return;
+  private updateCordPull(currentX: number, currentY: number): void {
+    if (!this.cordPullState.isGrabbing || !this.cordSimulator) return;
 
+    this.cordPullState.currentX = currentX;
     this.cordPullState.currentY = currentY;
 
-    // Calculate pull distance in pixels (Y increases downward in MediaPipe)
+    // Calculate pull distance in pixels
+    const deltaX = currentX - this.cordPullState.grabStartX;
     const deltaY = currentY - this.cordPullState.grabStartY;
-    this.cordPullState.pullDistance = Math.max(0, deltaY * window.innerHeight);
 
-    // Calculate feedback intensity (0-1) based on pull progress
-    this.cordPullState.feedbackIntensity = Math.min(
-      1,
-      this.cordPullState.pullDistance / this.config.cordPullThreshold
-    );
+    // Vertical pull distance for toggling (clamped)
+    this.cordPullState.pullDistance = Math.max(-100, deltaY * window.innerHeight);
 
-    // Visual feedback: subtle scale on cord to indicate grabbing
-    // This doesn't affect the bulb's rotation since we're scaling, not translating
-    if (this.cordMesh) {
-      const baseScale = 1.0;
-      const maxScaleIncrease = 0.1;
-      const scaleY = baseScale + this.cordPullState.feedbackIntensity * maxScaleIncrease;
-      this.cordMesh.scale.setY(scaleY);
+    // --- Stress Accumulation for Cord Breaking ---
+    const now = performance.now();
+    if (this.lastPullTimestamp > 0 && this.cordSimulator) {
+      const dt = (now - this.lastPullTimestamp) / 1000;
+      if (dt > 0) {
+        // Only consider vertical velocity (downward pulls are more stressful)
+        // This prevents breaking from rapid horizontal movement
+        const verticalVelocity = Math.max(0, currentY - this.lastPullY) / dt;
+
+        // Calculate current extension vs rest length
+        const particles = this.cordSimulator.getParticlePositions();
+        const first = particles[0];
+        const last = particles[particles.length - 1];
+        const currentDist = first.distanceTo(last);
+        const restLen = 0.5 * (this.lightBulbGroup?.scale.y || 1.0);
+        const extensionRatio = currentDist / restLen;
+
+        // Check for aggressive pull: Requires BOTH high velocity AND significant extension
+        // This prevents breaking from side-to-side movement or rapid light usage
+        if (
+          verticalVelocity > this.AGGRESSIVE_PULL_VELOCITY &&
+          extensionRatio > this.EXTENSION_BREAK_THRESHOLD &&
+          this.cordState === CordState.ATTACHED
+        ) {
+          this.cordFatigue.stress += this.STRESS_PER_PULL;
+          this.cordFatigue.pullCount++;
+          this.cordFatigue.lastPullTimestamp = now;
+
+          console.log(
+            `[CordFatigue] Aggressive Pull! Stress: ${this.cordFatigue.stress.toFixed(
+              2
+            )}, Extension: ${extensionRatio.toFixed(2)}x`
+          );
+
+          // Mark for deferred break on upward bounce (instead of breaking immediately)
+          if (this.cordFatigue.stress >= this.BREAK_THRESHOLD && !this.cordFatigue.pendingBreak) {
+            if (Math.random() < this.BREAK_PROBABILITY) {
+              this.cordFatigue.pendingBreak = true;
+              console.log('[CordFatigue] Break pending - will snap on upward bounce!');
+            }
+          }
+        }
+      }
+    }
+    this.lastPullY = currentY;
+    this.lastPullTimestamp = now;
+
+    // --- Stress Decay (when not pulling aggressively) ---
+    const timeSinceLastAggressivePull = (now - this.cordFatigue.lastPullTimestamp) / 1000;
+    if (timeSinceLastAggressivePull > 0.5 && this.cordFatigue.stress > 0) {
+      this.cordFatigue.stress = Math.max(
+        0,
+        this.cordFatigue.stress - this.STRESS_DECAY_RATE * 0.016
+      );
+    }
+
+    // Physics Interaction: Map hand position to world space and force the bottom particle
+    if (this.cordSimulator) {
+      const particles = this.cordSimulator.getParticlePositions();
+      const lastIndex = particles.length - 1;
+
+      // Map pixel delta to world delta (approximate at depth 5m)
+      const worldHeightVisible = 4.66;
+      const worldWidthVisible = worldHeightVisible * (window.innerWidth / window.innerHeight);
+
+      const worldDeltaX = -deltaX * worldWidthVisible;
+      const worldDeltaY = deltaY * worldHeightVisible;
+
+      let rawTargetPos: THREE.Vector3;
+
+      if (this.cordState === CordState.ATTACHED && this.cordAnchor) {
+        // Attached: move relative to anchor
+        const anchorPos = new THREE.Vector3();
+        this.cordAnchor.getWorldPosition(anchorPos);
+
+        const cordLen = 0.5 * this.lightBulbGroup!.scale.y;
+
+        const targetX = anchorPos.x + worldDeltaX;
+        const targetY = anchorPos.y - cordLen - worldDeltaY;
+        const targetZ = anchorPos.z;
+
+        rawTargetPos = new THREE.Vector3(targetX, targetY, targetZ);
+      } else if (this.cordState === CordState.DETACHED) {
+        // Detached: follow hand freely in world space
+        // Use camera-relative positioning
+        const worldX = (0.5 - currentX) * worldWidthVisible;
+        const worldY = (0.5 - currentY) * worldHeightVisible;
+        rawTargetPos = new THREE.Vector3(worldX, worldY, 0);
+      } else {
+        return; // Safety: no valid state
+      }
+
+      // Apply exponential smoothing to reduce jitter from hand tracking noise
+      // Lerp: smoothed = smoothed + alpha * (target - smoothed)
+      this.smoothedCordTarget.lerp(rawTargetPos, this.CORD_POSITION_SMOOTHING);
+
+      // Apply smoothed position to the grabbed particle
+      this.cordSimulator.grabParticle(lastIndex, this.smoothedCordTarget);
+
+      // Check for overstretching (instant break if stretched too far)
+      if (this.cordState === CordState.ATTACHED && this.cordAnchor) {
+        const anchorPos = new THREE.Vector3();
+        this.cordAnchor.getWorldPosition(anchorPos);
+
+        const currentDist = anchorPos.distanceTo(particles[lastIndex]);
+        const restLen = 0.5 * (this.lightBulbGroup?.scale.y || 1.0);
+        const stretchRatio = currentDist / restLen;
+
+        // Instant break if stretched beyond maximum threshold
+        if (stretchRatio > this.MAX_STRETCH_BEFORE_SNAP) {
+          console.log(
+            `[CordBreak] Overstretched! Ratio: ${stretchRatio.toFixed(2)}x - INSTANT SNAP!`
+          );
+          // Mark for break on next upward bounce
+          this.cordFatigue.pendingBreak = true;
+        }
+      }
+    }
+
+    // UX Logic: Check threshold and toggle immediately if reached (only when attached)
+    if (this.cordState === CordState.ATTACHED) {
+      const positivePull = Math.max(0, this.cordPullState.pullDistance);
+
+      if (positivePull >= this.config.cordPullThreshold && !this.cordPullState.hasToggled) {
+        this.toggleLight();
+        this.cordPullState.hasToggled = true;
+        console.log('[LightBulbController] Threshold reached - Toggled!');
+      } else if (
+        positivePull < this.config.cordPullThreshold * 0.4 &&
+        this.cordPullState.hasToggled
+      ) {
+        this.cordPullState.hasToggled = false;
+        console.log('[LightBulbController] Toggle reset (Hysteresis)');
+      }
+
+      // Calculate feedback intensity (0-1) based on pull progress
+      this.cordPullState.feedbackIntensity = Math.min(
+        1,
+        positivePull / this.config.cordPullThreshold
+      );
     }
   }
 
   /**
-   * End the cord pulling interaction and potentially toggle light.
+   * End the cord pulling interaction.
+   * Note: Toggling now happens during the pull, so we just cleanup here.
    */
   private endCordPull(): void {
     if (!this.cordPullState.isGrabbing) return;
 
-    // Check if pull threshold was reached
-    if (this.cordPullState.pullDistance >= this.config.cordPullThreshold) {
-      this.toggleLight();
-    }
-
-    // Reset cord scale with animation
-    if (this.cordMesh) {
-      gsap.to(this.cordMesh.scale, {
-        y: 1.0,
-        duration: 0.2,
-        ease: 'power2.out',
-      });
+    // Physics: Unpin the particle to let it spring back
+    if (this.cordSimulator) {
+      const particles = this.cordSimulator.getParticlePositions();
+      const lastIndex = particles.length - 1;
+      this.cordSimulator.unpinParticle(lastIndex);
     }
 
     // Reset cord pull state
     this.cordPullState = {
       isGrabbing: false,
+      grabStartX: 0,
+      currentX: 0,
       grabStartY: 0,
       currentY: 0,
       pullDistance: 0,
       feedbackIntensity: 0,
+      hasToggled: false,
     };
 
-    console.log('[LightBulbController] Cord pull ended');
+    console.log('[LightBulbController] Cord pull ended (Unpinned)');
+  }
+
+  /**
+   * Check if the cord should break during upward bounce after release.
+   *
+   * Monitors the cord's velocity when a break is pending. When the cord bounces
+   * upward with sufficient velocity after being released, triggers the break
+   * for a more dramatic visual effect (cord flies up as it snaps).
+   */
+  private checkPendingBreakOnBounce(): void {
+    // Only check when conditions are met:
+    // - Cord is still attached
+    // - Break is pending from prior stress accumulation
+    // - User is not actively grabbing the cord (cord is bouncing freely)
+    if (
+      this.cordState !== CordState.ATTACHED ||
+      !this.cordFatigue.pendingBreak ||
+      this.cordPullState.isGrabbing ||
+      !this.cordSimulator
+    ) {
+      return;
+    }
+
+    // Get velocity of the bottom particle (the handle/end of cord)
+    const particles = this.cordSimulator.getParticlePositions();
+    const lastIndex = particles.length - 1;
+    const velocity = this.cordSimulator.getVelocity(lastIndex);
+
+    // Check for upward motion (positive Y velocity in world space)
+    // The cord snaps when bouncing upward with sufficient velocity
+    if (velocity.y > this.UPWARD_BOUNCE_BREAK_VELOCITY) {
+      console.log(
+        `[CordFatigue] Upward bounce detected! Velocity: ${velocity.y.toFixed(2)} - SNAP!`
+      );
+      this.breakCord();
+      // Clear the pending flag (already consumed)
+      this.cordFatigue.pendingBreak = false;
+    }
+  }
+
+  /**
+   * Break the cord, detaching it from the light bulb.
+   * Severs the electrical connection, turning off the light.
+   */
+  private breakCord(): void {
+    if (this.cordState === CordState.DETACHED) return;
+
+    this.cordState = CordState.DETACHED;
+
+    // Detach physics anchor
+    if (this.cordSimulator) {
+      this.cordSimulator.detachAnchor();
+    }
+
+    // Turn off the light (electrical connection severed)
+    this.applyLightState(LightState.OFF, true);
+  }
+
+  /**
+   * Reset the cord to its attached state.
+   * Called on R-key press.
+   */
+  private resetCord(): void {
+    // Reset state
+    this.cordState = CordState.ATTACHED;
+    this.cordFatigue = {
+      stress: 0,
+      lastPullTimestamp: 0,
+      pullCount: 0,
+      pendingBreak: false,
+    };
+    this.lastPullY = 0;
+    this.lastPullTimestamp = 0;
+
+    // Reset physics
+    if (this.cordSimulator && this.cordAnchor) {
+      const anchorPos = new THREE.Vector3();
+      this.cordAnchor.getWorldPosition(anchorPos);
+      this.cordSimulator.reattachAnchor(anchorPos);
+    }
+
+    // Reset light to OFF
+    this.applyLightState(LightState.OFF, false);
+
+    // Reset interaction states
+    this.forceResetAllInteractions();
+
+    console.log('[LightBulbController] Cord and light reset');
   }
 
   /**
@@ -1066,19 +1449,18 @@ export class LightBulbController {
 
   /**
    * Update the rotation based on hand movement.
-   * Uses smoothed delta for responsive yet stable rotation.
-   *
-   * @param currentX - Current X position (normalized)
-   * @param currentY - Current Y position (normalized)
+   * Improved physics feel: Less smoothing, more direct control, constrained axis.
    */
   private updateRotation(currentX: number, currentY: number): void {
     if (!this.rotationState.isRotating || !this.lightBulbGroup) return;
 
     const prevPosition = this.rotationState.currentPosition;
 
-    // Smooth the input position to reduce jitter
-    const smoothedX = prevPosition.x + (currentX - prevPosition.x) * (1 - this.ROTATION_SMOOTHING);
-    const smoothedY = prevPosition.y + (currentY - prevPosition.y) * (1 - this.ROTATION_SMOOTHING);
+    // Use lighter smoothing for more responsive feel (0.1 instead of 0.3)
+    // 0.0 = no smoothing, 1.0 = infinite smoothing
+    const smoothing = 0.15;
+    const smoothedX = prevPosition.x + (currentX - prevPosition.x) * (1 - smoothing);
+    const smoothedY = prevPosition.y + (currentY - prevPosition.y) * (1 - smoothing);
 
     this.rotationState.currentPosition = { x: smoothedX, y: smoothedY };
 
@@ -1086,25 +1468,30 @@ export class LightBulbController {
     const deltaX = -(smoothedX - prevPosition.x);
     const deltaY = smoothedY - prevPosition.y;
 
-    // Update rotation with reduced sensitivity for smoother control
-    const sensitivity = this.config.rotationSensitivity * 0.6; // Reduce by 40%
+    // Sensitivity
+    const sensitivity = this.config.rotationSensitivity * 0.8;
+
+    // Main rotation: Y-axis (spinning)
     const rotationDeltaY = deltaX * Math.PI * sensitivity;
-    const rotationDeltaX = deltaY * Math.PI * sensitivity;
+
+    // Secondary rotation: X-axis (tilting/swinging)
+    // Reduce X sensitivity significantly to prioritize spinning
+    const rotationDeltaX = deltaY * Math.PI * sensitivity * 0.3;
 
     this.rotationState.targetRotation.y += rotationDeltaY;
     this.rotationState.targetRotation.x += rotationDeltaX;
 
-    // Clamp X rotation to prevent over-rotation
+    // Clamp X rotation tightly - we don't want to flip the bulb
     this.rotationState.targetRotation.x = THREE.MathUtils.clamp(
       this.rotationState.targetRotation.x,
-      -Math.PI / 3,
-      Math.PI / 3
+      -Math.PI / 6, // 30 degrees max tilt
+      Math.PI / 6
     );
 
     // Track velocity for inertia
     this.rotationState.velocity = { x: rotationDeltaX, y: rotationDeltaY };
 
-    // Apply rotation directly (smoothing already applied to input)
+    // Apply rotation
     this.lightBulbGroup.rotation.x = this.rotationState.targetRotation.x;
     this.lightBulbGroup.rotation.y = this.rotationState.targetRotation.y;
   }
@@ -1211,6 +1598,12 @@ export class LightBulbController {
     // Remove renderer from DOM
     if (this.renderer.domElement.parentNode) {
       this.renderer.domElement.parentNode.removeChild(this.renderer.domElement);
+    }
+
+    // Remove keydown handler
+    if (this.keydownHandler) {
+      window.removeEventListener('keydown', this.keydownHandler);
+      this.keydownHandler = null;
     }
 
     // Dispose landmark overlay

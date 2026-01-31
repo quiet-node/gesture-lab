@@ -653,7 +653,7 @@ export class App {
     } else if (mode === 'light-bulb') {
       // Dark background for dramatic light bulb effect - makes glow more visible
       this.videoElement.style.cssText =
-        baseStyles + 'filter: brightness(0.1) contrast(0.7) saturate(0.5);';
+        baseStyles + 'filter: brightness(0.3) contrast(0.7) saturate(0.5);';
     } else {
       // Full brightness for foggy-mirror mode
       this.videoElement.style.cssText = baseStyles + 'filter: none;';

@@ -64,7 +64,7 @@ export const DEFAULT_LIGHT_BULB_CONFIG: LightBulbConfig = {
   emissiveIntensityOn: 2.5,
   emissiveIntensityOff: 0.05,
   pinchThreshold: 0.06,
-  cordPullThreshold: 80,
+  cordPullThreshold: 40,
   rotationDamping: 0.92,
   rotationSensitivity: 3.0,
   lightTransitionDuration: 0.3,
@@ -104,6 +104,34 @@ export enum InteractionState {
 export enum LightState {
   OFF = 'off',
   ON = 'on',
+}
+
+/**
+ * Cord attachment state.
+ */
+export enum CordState {
+  /** Cord is attached to the light bulb socket */
+  ATTACHED = 'attached',
+  /** Cord has snapped off and is free-falling */
+  DETACHED = 'detached',
+}
+
+/**
+ * Fatigue state for cord stress accumulation.
+ * Models material fatigue from repeated aggressive pulls.
+ */
+export interface CordFatigueState {
+  /** Accumulated stress level (0.0 to 1.0+) */
+  stress: number;
+
+  /** Timestamp of last aggressive pull (ms) */
+  lastPullTimestamp: number;
+
+  /** Count of aggressive pulls since last reset */
+  pullCount: number;
+
+  /** Whether the cord is marked to break on the next upward bounce */
+  pendingBreak: boolean;
 }
 
 /**
@@ -159,6 +187,12 @@ export interface CordPullState {
   /** Whether the cord is currently being grabbed */
   isGrabbing: boolean;
 
+  /** X position when grab started (normalized, 0-1) */
+  grabStartX: number;
+
+  /** Current X position during drag (normalized, 0-1) */
+  currentX: number;
+
   /** Y position when grab started (normalized, 0-1) */
   grabStartY: number;
 
@@ -170,6 +204,9 @@ export interface CordPullState {
 
   /** Visual feedback intensity (0-1) */
   feedbackIntensity: number;
+
+  /** Whether the Switch has already been toggled in this interaction */
+  hasToggled: boolean;
 }
 
 /**
