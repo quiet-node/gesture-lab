@@ -69,6 +69,16 @@ Manipulate the fabric of space-time with an elegant, spring-based dot grid.
   - **Cosmic Strings**: Both hands pinky pinch to pluck the grid.
 - [Design Document](docs/DESIGN-STELLAR-WAVE.md)
 
+### 6. Light Bulb
+
+A physics-based simulation of an incandescent light bulb with realistic cord dynamics and thermal animation.
+
+- **Gestures**:
+  - **Rotate**: Pinch to grab and rotate the bulb View.
+  - **Toggle**: Pull the cord to switch on/off.
+  - **Break**: Aggressive pulls snap the cord (Material Fatigue).
+- [Design Document](docs/DESIGN-LIGHT-BULB.md)
+
 ## 🚀 Quick Start
 
 ```bash
@@ -92,6 +102,7 @@ bun validate-build
 - **G**: Switch to Galaxy Mode
 - **F**: Switch to Foggy Mirror Mode
 - **S**: Switch to Stellar Wave Mode
+- **L**: Switch to Light Bulb Mode
 - **H**: Toggle Hints
 - **D**: Toggle Debug Panel
 - **Esc**: Stop/Dispose
