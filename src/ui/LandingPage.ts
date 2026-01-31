@@ -142,63 +142,63 @@ export class LandingPage {
       .landing-container {
         text-align: center;
         width: 100%;
-        max-width: 600px;
+        max-width: 1000px; /* Wider container for grid */
         height: 100%;
         padding: 4rem 2rem;
         display: flex;
         flex-direction: column;
         align-items: center;
-        justify-content: space-between;
+        justify-content: center; /* Center vertically */
       }
 
       .landing-header {
         animation: fadeDown 0.8s ease-out forwards;
+        margin-bottom: 3rem; /* Add spacing below header */
       }
 
       .app-title {
         font-family: 'Playfair Display', serif !important;
-        font-size: 4rem;
+        font-size: 4.5rem; /* Slightly larger */
         font-weight: 700;
         letter-spacing: 0.1rem;
         margin: 0;
         background: linear-gradient(to bottom, #ffffff, #aaaaaa);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
+        text-shadow: 0 10px 30px rgba(0,0,0,0.5);
       }
 
       .app-subtitle {
-        font-size: 1.1rem;
+        font-size: 1.2rem;
         color: #666688;
         margin-top: 0.5rem;
         font-weight: 300;
-        letter-spacing: 0.1rem;
+        letter-spacing: 0.15rem;
         text-transform: uppercase;
       }
 
       .portals-container {
-        display: flex;
-        flex-direction: column;
+        display: grid;
+        grid-template-columns: repeat(2, 1fr); /* 2 Column Grid */
         gap: 1.5rem;
         width: 100%;
         perspective: 1000px;
-        margin: auto 0; /* Center vertically if space allows */
+        /* Remove margin auto since we justify-center parent */
       }
 
       .portal-card {
         position: relative;
         width: 100%;
-        height: auto;
-        min-height: 100px;
         background: rgba(255, 255, 255, 0.03);
         border: 1px solid rgba(255, 255, 255, 0.08);
         border-radius: 16px;
-        padding: 1.5rem 2rem;
+        padding: 1.75rem;
         cursor: pointer;
         transition: all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
         display: flex;
-        flex-direction: row;
-        align-items: center;
-        justify-content: space-between;
+        flex-direction: column; /* Stacking content vertically */
+        align-items: flex-start;
+        justify-content: flex-start;
         text-align: left;
         overflow: hidden;
         backdrop-filter: blur(10px);
@@ -206,11 +206,16 @@ export class LandingPage {
         animation: fadeUp 0.8s ease-out forwards;
         animation-delay: 0.2s;
         opacity: 0;
+        min-height: 160px; /* Uniform height */
       }
 
-      .portal-card:nth-child(2) {
-        animation-delay: 0.3s;
-      }
+      /* Stagger animations for grid */
+      .portal-card:nth-child(1) { animation-delay: 0.1s; }
+      .portal-card:nth-child(2) { animation-delay: 0.2s; }
+      .portal-card:nth-child(3) { animation-delay: 0.3s; }
+      .portal-card:nth-child(4) { animation-delay: 0.4s; }
+      .portal-card:nth-child(5) { animation-delay: 0.5s; }
+      .portal-card:nth-child(6) { animation-delay: 0.6s; }
 
       .portal-bg {
         position: absolute;
@@ -223,34 +228,19 @@ export class LandingPage {
         transition: opacity 0.4s ease;
       }
 
-      .galaxy-portal .portal-bg {
-        background: linear-gradient(90deg, rgba(100, 50, 255, 0.1), transparent);
-      }
-
-      .fog-portal .portal-bg {
-        background: linear-gradient(90deg, rgba(200, 200, 220, 0.1), transparent);
-      }
-
-      .slash-portal .portal-bg {
-        background: linear-gradient(90deg, rgba(255, 100, 100, 0.1), transparent);
-      }
-
-      .workshop-portal .portal-bg {
-        background: linear-gradient(90deg, rgba(0, 255, 255, 0.1), transparent);
-      }
-
-      .stellar-portal .portal-bg {
-        background: linear-gradient(90deg, rgba(100, 200, 255, 0.1), transparent);
-      }
-
-      .bulb-portal .portal-bg {
-        background: linear-gradient(90deg, rgba(255, 244, 224, 0.15), transparent);
-      }
+      /* Gradient definitions */
+      .galaxy-portal .portal-bg { background: linear-gradient(135deg, rgba(100, 50, 255, 0.15), transparent); }
+      .fog-portal .portal-bg { background: linear-gradient(135deg, rgba(200, 200, 220, 0.15), transparent); }
+      .slash-portal .portal-bg { background: linear-gradient(135deg, rgba(255, 100, 100, 0.15), transparent); }
+      .workshop-portal .portal-bg { background: linear-gradient(135deg, rgba(0, 255, 255, 0.15), transparent); }
+      .stellar-portal .portal-bg { background: linear-gradient(135deg, rgba(100, 200, 255, 0.15), transparent); }
+      .bulb-portal .portal-bg { background: linear-gradient(135deg, rgba(255, 244, 224, 0.15), transparent); }
 
       .portal-card:hover {
-        transform: translateX(5px);
-        border-color: rgba(255, 255, 255, 0.2);
-        background: rgba(255, 255, 255, 0.05);
+        transform: translateY(-5px); /* Lift up effect */
+        border-color: rgba(255, 255, 255, 0.25);
+        background: rgba(255, 255, 255, 0.08);
+        box-shadow: 0 10px 30px rgba(0,0,0,0.2);
       }
 
       .portal-card:hover .portal-bg {
@@ -259,14 +249,15 @@ export class LandingPage {
 
       .portal-content {
         z-index: 2;
-        flex: 1;
+        width: 100%;
+        margin-bottom: 1rem;
       }
 
       .portal-title {
-        font-size: 1.4rem;
+        font-size: 1.5rem;
         font-weight: 600;
         color: #fff;
-        margin: 0 0 0.25rem 0;
+        margin: 0 0 0.5rem 0;
         letter-spacing: 0.02rem;
       }
 
@@ -275,36 +266,42 @@ export class LandingPage {
         color: #8888aa;
         margin: 0;
         font-weight: 300;
+        line-height: 1.4;
       }
 
       .portal-footer {
         z-index: 2;
-        margin-left: 2rem;
+        margin-top: auto; /* Push to bottom */
+        width: 100%;
         display: flex;
-        align-items: center;
+        justify-content: flex-end; /* Align to right */
       }
 
       .key-hint {
-        font-size: 0.8rem;
+        font-size: 0.75rem;
         color: #666688;
         text-transform: uppercase;
         letter-spacing: 0.05rem;
         display: flex;
         align-items: center;
         gap: 0.5rem;
+        background: rgba(0,0,0,0.2);
+        padding: 4px 8px;
+        border-radius: 6px;
       }
 
       kbd {
-        background: rgba(255, 255, 255, 0.1);
-        border: 1px solid rgba(255, 255, 255, 0.2);
+        background: rgba(255, 255, 255, 0.15);
+        border: 1px solid rgba(255, 255, 255, 0.3);
         border-radius: 4px;
         padding: 2px 8px;
         color: #fff;
         font-family: 'Nunito', sans-serif;
         font-weight: 700;
-        font-size: 0.9rem;
+        font-size: 0.85rem;
         min-width: 24px;
         text-align: center;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.2);
       }
 
       @keyframes fadeDown {
@@ -317,55 +314,63 @@ export class LandingPage {
         to { opacity: 1; transform: translateY(0); }
       }
 
-      @media (max-width: 600px) {
+      /* Responsive Breakpoints */
+      @media (max-width: 768px) {
         .landing-container {
-          padding: 3.5rem 0.75rem 1.5rem;
-          gap: 1rem;
+          padding: 2rem 1.5rem;
+          justify-content: flex-start;
           overflow-y: auto;
-          max-height: 100%;
         }
-        .app-title { font-size: 2.2rem; }
-        .app-subtitle { font-size: 0.85rem; }
-        .portals-container { 
-          gap: 0.75rem; 
-          padding: 0 0.25rem;
+        
+        .portals-container {
+          grid-template-columns: 1fr; /* Switch to 1 column */
+          gap: 1rem;
+          margin-top: 1rem;
         }
-        .portal-card { 
-          flex-direction: column; 
-          align-items: flex-start; 
-          gap: 0.5rem;
-          padding: 1rem;
+
+        .app-title { font-size: 3rem; }
+        .app-subtitle { font-size: 1rem; }
+        
+        .portal-card {
           min-height: auto;
+          flex-direction: row; /* Horizontal on mobile for compactness? Or Stack? Let's stack generally or Horizontal if space allows. Horizontal is often better for lists on mobile. Let's try horizontal for mobile to save vertical space? existing was horizontal. */
+          /* Let's actually keep it vertical but smaller padding */
+          flex-direction: row; /* Revert to horizontal row for mobile list */
+          align-items: center;
+          padding: 1.25rem;
         }
-        .portal-title { font-size: 1.1rem; }
-        .portal-desc { font-size: 0.8rem; }
-        .portal-footer { display: none; }
-        .landing-footer { bottom: 12px; }
+
+        .portal-content {
+          margin-bottom: 0;
+        }
+        
+        .portal-footer {
+          margin-top: 0;
+          width: auto;
+          margin-left: 1rem;
+        }
+        
+        /* Hide description on very small screens if needed? No, nice to have. */
       }
 
-      @media (max-width: 400px) {
+      @media (max-width: 480px) {
+        .app-title { font-size: 2.2rem; }
+        
+        .portal-card {
+          flex-direction: column; /* Stack on very small screens */
+          align-items: flex-start;
+          padding: 1rem;
+        }
+        
+        .portal-footer {
+          margin-top: 1rem;
+          width: 100%;
+          justify-content: flex-start; /* Left align on small mobile */
+          margin-left: 0;
+        }
+        
         .landing-container {
-          padding: 3.5rem 0.5rem 1rem;
-        }
-        .app-title { font-size: 1.8rem; }
-        .app-subtitle { 
-          font-size: 0.75rem; 
-          letter-spacing: 0.05rem;
-        }
-        .portals-container { gap: 0.6rem; }
-        .portal-card { 
-          padding: 0.85rem;
-          border-radius: 12px;
-        }
-        .portal-title { font-size: 1rem; }
-        .portal-desc { font-size: 0.75rem; }
-        .landing-footer { 
-          bottom: 8px;
-          font-size: 0.75rem;
-        }
-        .landing-footer a {
-          padding: 4px 8px;
-          font-size: 0.7rem;
+          padding: 2rem 1rem;
         }
       }
     `;
