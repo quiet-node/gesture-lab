@@ -27,6 +27,7 @@ export class ModeIndicator {
       | 'iron-man-workshop'
       | 'stellar-wave'
       | 'light-bulb'
+      | 'magnetic-clutter'
   ): void {
     if (!this.element) {
       this.createDOM();
@@ -48,7 +49,9 @@ export class ModeIndicator {
               ? 'Stellar Wave'
               : mode === 'light-bulb'
                 ? 'Light Bulb'
-                : 'Foggy Mirror';
+                : mode === 'magnetic-clutter'
+                  ? 'Magnetic Clutter'
+                  : 'Foggy Mirror';
 
     content.innerHTML = `
       <div class="current-mode">${modeName}</div>

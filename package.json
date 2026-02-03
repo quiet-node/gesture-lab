@@ -35,6 +35,7 @@
     "url": "https://github.com/quiet-node/gesture-lab/issues"
   },
   "dependencies": {
+    "@dimforge/rapier3d-compat": "^0.19.3",
     "@fontsource/nunito": "^5.2.7",
     "@fontsource/playfair-display": "^5.2.8",
     "@lume/three-meshline": "^4.0.5",

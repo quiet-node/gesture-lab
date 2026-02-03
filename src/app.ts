@@ -16,6 +16,8 @@ import { StellarWaveController } from './stellar-wave/StellarWaveController';
 import { StellarWaveDebugInfo } from './stellar-wave/types';
 import { LightBulbController } from './light-bulb/LightBulbController';
 import { LightBulbDebugInfo } from './light-bulb/types';
+import { MagneticClutterController } from './magnetic-clutter/MagneticClutterController';
+import { MagneticClutterDebugInfo } from './magnetic-clutter/types';
 import { HandTracker } from './shared/HandTracker';
 import { DebugComponent } from './ui/DebugComponent';
 import { Footer } from './ui/Footer';
@@ -58,6 +60,7 @@ export class App {
   private workshopController: WorkshopController | null = null;
   private stellarWaveController: StellarWaveController | null = null;
   private lightBulbController: LightBulbController | null = null;
+  private magneticClutterController: MagneticClutterController | null = null;
   private config: AppConfig;
   private currentMode: InteractionMode | null = null;
 
@@ -176,6 +179,8 @@ export class App {
         this.switchToStellarWaveMode();
       } else if (mode === 'light-bulb') {
         this.switchToLightBulbMode();
+      } else if (mode === 'magnetic-clutter') {
+        this.switchToMagneticClutterMode();
       }
     });
 
@@ -263,6 +268,9 @@ export class App {
       } else if (key === 'l') {
         this.switchToLightBulbMode();
         return;
+      } else if (key === 'k') {
+        this.switchToMagneticClutterMode();
+        return;
       }
 
       // Mode specific shortcuts
@@ -280,6 +288,8 @@ export class App {
           this.stellarWaveController?.reset();
         } else if (this.currentMode === 'light-bulb') {
           this.lightBulbController?.reset();
+        } else if (this.currentMode === 'magnetic-clutter') {
+          this.magneticClutterController?.reset();
         }
         return;
       }
@@ -352,10 +362,16 @@ export class App {
 
     // Stop light bulb controller
     if (this.lightBulbController) {
-      this.lightBulbController.stop();
-      this.lightBulbController.disableDebug();
       this.lightBulbController.dispose();
       this.lightBulbController = null;
+    }
+
+    // Stop magnetic clutter controller
+    if (this.magneticClutterController) {
+      this.magneticClutterController.stop();
+      this.magneticClutterController.disableDebug();
+      this.magneticClutterController.dispose();
+      this.magneticClutterController = null;
     }
   }
 
@@ -455,6 +471,10 @@ export class App {
       this.stellarWaveController.enableDebug((info) => this.updateStellarWaveDebugPanel(info));
     } else if (this.currentMode === 'light-bulb' && this.lightBulbController) {
       this.lightBulbController.enableDebug((info) => this.updateLightBulbDebugPanel(info));
+    } else if (this.currentMode === 'magnetic-clutter' && this.magneticClutterController) {
+      this.magneticClutterController.enableDebug((info) =>
+        this.updateMagneticClutterDebugPanel(info)
+      );
     }
   }
 
@@ -559,6 +579,9 @@ export class App {
       } else if (this.currentMode === 'light-bulb') {
         const handCount = this.lightBulbController?.getHandCount() ?? 0;
         this.updateHandStatus(handCount);
+      } else if (this.currentMode === 'magnetic-clutter') {
+        const handCount = this.magneticClutterController?.getHandCount() ?? 0;
+        this.updateHandStatus(handCount);
       }
       // Note: foggy-mirror mode has its own update loop in FoggyMirrorController
 
@@ -593,6 +616,7 @@ export class App {
       this.workshopController?.disableDebug();
       this.stellarWaveController?.disableDebug();
       this.lightBulbController?.disableDebug();
+      this.magneticClutterController?.disableDebug();
     } else {
       if (this.currentMode === 'galaxy' && this.controller) {
         this.controller.enableDebug((info) => this.updateGalaxyDebugPanel(info));
@@ -606,6 +630,10 @@ export class App {
         this.stellarWaveController.enableDebug((info) => this.updateStellarWaveDebugPanel(info));
       } else if (this.currentMode === 'light-bulb' && this.lightBulbController) {
         this.lightBulbController.enableDebug((info) => this.updateLightBulbDebugPanel(info));
+      } else if (this.currentMode === 'magnetic-clutter' && this.magneticClutterController) {
+        this.magneticClutterController.enableDebug((info) =>
+          this.updateMagneticClutterDebugPanel(info)
+        );
       }
     }
   }
@@ -654,6 +682,10 @@ export class App {
       // Dark background for dramatic light bulb effect - makes glow more visible
       this.videoElement.style.cssText =
         baseStyles + 'filter: brightness(0.3) contrast(0.7) saturate(0.5);';
+    } else if (mode === 'magnetic-clutter') {
+      // Dark background to match CodePen style
+      this.videoElement.style.cssText =
+        baseStyles + 'filter: brightness(0.05) contrast(1) saturate(1);';
     } else {
       // Full brightness for foggy-mirror mode
       this.videoElement.style.cssText = baseStyles + 'filter: none;';
@@ -717,6 +749,51 @@ export class App {
     // Re-enable debug if it was active
     if (this.debugComponent?.isVisibleState() && this.controller) {
       this.controller.enableDebug((info) => this.updateGalaxyDebugPanel(info));
+    }
+  }
+
+  /**
+   * Switch to magnetic clutter interaction mode
+   */
+  switchToMagneticClutterMode(): void {
+    if (this.currentMode === 'magnetic-clutter') return;
+
+    console.log('[App] Switching to magnetic-clutter mode');
+
+    this.landingPage?.hide();
+    this.stopCurrentMode();
+
+    if (!this.magneticClutterController) {
+      this.magneticClutterController = new MagneticClutterController(
+        this.handTracker,
+        this.container,
+        { debug: this.config.debug }
+      );
+      this.magneticClutterController.initialize();
+    }
+
+    this.magneticClutterController.start();
+
+    this.applyVideoStyles('magnetic-clutter');
+    this.currentMode = 'magnetic-clutter';
+    this.state = 'running';
+    this.updateHandStatus(0);
+
+    this.footer?.show();
+    this.hintComponent?.update('magnetic-clutter');
+    this.hintComponent?.show();
+    this.modeIndicator?.update('magnetic-clutter');
+
+    this.startAnimationLoop();
+
+    if (!this.handTracker.isCameraEnabled()) {
+      this.cameraPermissionBanner?.show('magnetic-clutter');
+    }
+
+    if (this.debugComponent?.isVisibleState()) {
+      this.magneticClutterController.enableDebug((info) =>
+        this.updateMagneticClutterDebugPanel(info)
+      );
     }
   }
 
@@ -1064,6 +1141,25 @@ export class App {
   }
 
   /**
+   * Update magnetic clutter debug panel with current info
+   */
+  private updateMagneticClutterDebugPanel(info: MagneticClutterDebugInfo): void {
+    if (!this.debugComponent) return;
+
+    this.debugComponent.update(`
+      <div style="margin-bottom: 8px; color: #fff; font-weight: bold;">Debug Info</div>
+      <div>FPS: ${info.fps.toFixed(1)}</div>
+      <div>Hands: ${info.handsDetected}</div>
+      <div>Balls: ${info.activeBalls}</div>
+      <div style="margin-top: 4px; border-top: 1px solid rgba(255,255,255,0.2); padding-top: 4px;">
+        <div>Repulsor: ${info.isRepulsing ? '<span style="color: #f00;">ON</span>' : 'OFF'}</div>
+        <div>Grabber: ${info.isGrabbing ? '<span style="color: #0f0;">ON</span>' : 'OFF'}</div>
+        <div>Physics: ${info.physicsTimeMs.toFixed(1)} ms</div>
+      </div>
+    `);
+  }
+
+  /**
    * Clean up and stop the application
    */
   dispose(): void {
@@ -1082,6 +1178,7 @@ export class App {
     this.workshopController?.dispose();
     this.stellarWaveController?.dispose();
     this.lightBulbController?.dispose();
+    this.magneticClutterController?.dispose();
     this.handTracker.dispose();
     this.galaxyRenderer?.dispose();
     this.deviceBanner?.dispose();

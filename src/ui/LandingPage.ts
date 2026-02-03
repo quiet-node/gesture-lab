@@ -9,7 +9,8 @@ export type InteractionMode =
   | 'cosmic-slash'
   | 'iron-man-workshop'
   | 'stellar-wave'
-  | 'light-bulb';
+  | 'light-bulb'
+  | 'magnetic-clutter';
 
 export class LandingPage {
   private container: HTMLElement;
@@ -100,6 +101,17 @@ export class LandingPage {
             </div>
             <div class="portal-footer">
               <span class="key-hint">Press <kbd>L</kbd></span>
+            </div>
+            <div class="portal-bg"></div>
+          </button>
+
+          <button class="portal-card clutter-portal" data-mode="magnetic-clutter">
+            <div class="portal-content">
+              <h2 class="portal-title">Magnetic Clutter</h2>
+              <p class="portal-desc">Repulse and grab magnetic spheres</p>
+            </div>
+            <div class="portal-footer">
+              <span class="key-hint">Press <kbd>K</kbd></span>
             </div>
             <div class="portal-bg"></div>
           </button>
@@ -235,6 +247,7 @@ export class LandingPage {
       .workshop-portal .portal-bg { background: linear-gradient(135deg, rgba(0, 255, 255, 0.15), transparent); }
       .stellar-portal .portal-bg { background: linear-gradient(135deg, rgba(100, 200, 255, 0.15), transparent); }
       .bulb-portal .portal-bg { background: linear-gradient(135deg, rgba(255, 244, 224, 0.15), transparent); }
+      .clutter-portal .portal-bg { background: linear-gradient(135deg, rgba(255, 50, 50, 0.15), transparent); }
 
       .portal-card:hover {
         transform: translateY(-5px); /* Lift up effect */

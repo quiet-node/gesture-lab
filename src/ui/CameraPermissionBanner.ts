@@ -16,6 +16,7 @@ const MODE_MESSAGES: Record<InteractionMode, string> = {
   'foggy-mirror': 'Enable camera for the mirror effect',
   'stellar-wave': 'Enable camera for pinch-triggered ripples',
   'light-bulb': 'Enable camera to interact with the light bulb',
+  'magnetic-clutter': 'Enable camera to repulse and grab magnetic balls',
 };
 
 export class CameraPermissionBanner {

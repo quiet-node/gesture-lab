@@ -25,6 +25,7 @@ export class HintComponent {
       | 'iron-man-workshop'
       | 'stellar-wave'
       | 'light-bulb'
+      | 'magnetic-clutter'
   ): void {
     if (!this.element) {
       this.createDOM();
@@ -125,6 +126,28 @@ export class HintComponent {
           <div class="hint-row">
             <span class="hint-label">Toggle Light</span>
             <span class="hint-value">Pinch Cord + Pull</span>
+          </div>
+          <div class="hint-row">
+            <span class="hint-label">Reset</span>
+            <span class="hint-value">Press <kbd>R</kbd></span>
+          </div>
+        </div>
+        </div>
+      `;
+    } else if (mode === 'magnetic-clutter') {
+      content.innerHTML = `
+        <div class="hint-header">
+          <span class="hint-title">Magnetic Clutter</span>
+          <span class="hint-subtitle">Interaction Guide</span>
+        </div>
+        <div class="hint-grid">
+          <div class="hint-row">
+            <span class="hint-label">Repulsor</span>
+            <span class="hint-value">Right Fist</span>
+          </div>
+          <div class="hint-row">
+            <span class="hint-label">Grab Ball</span>
+            <span class="hint-value">Left Pinch</span>
           </div>
           <div class="hint-row">
             <span class="hint-label">Reset</span>
