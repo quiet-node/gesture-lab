@@ -77,6 +77,11 @@ A physics-based simulation of an incandescent light bulb with realistic cord dyn
   - **Rotate**: Pinch to grab and rotate the bulb View.
   - **Toggle**: Pull the cord to switch on/off.
   - **Break**: Aggressive pulls snap the cord (Material Fatigue).
+- [Design Document](docs/DESIGN-LIGHT-BULB.md)
+
+
+https://github.com/user-attachments/assets/3373c54a-1d47-4bad-a508-3b8aca96e399
+
 
 ### 7. Magnetic Clutter
 
