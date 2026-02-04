@@ -87,9 +87,8 @@ A satisfyingly chaotic digital toy where magnetic balls form clusters and react 
   - **Grab**: Left hand pinch to grab and manipulate individual balls.
 - [Design Document](docs/DESIGN-MAGNETIC-CLUTTER.md)
 
-**Credits**: Inspired by [Gioda's CodePen](https://codepen.io/Gioda34/pen/QwErpzQ) (@gioda123456).
+https://github.com/user-attachments/assets/4e17cbdc-5474-4f81-8400-16b7f9376cb0
 
-https://github.com/user-attachments/assets/584c39c3-b07c-4872-9b4b-54a90a31370c
 
 ## 🚀 Quick Start
 
