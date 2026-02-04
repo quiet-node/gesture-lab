@@ -77,9 +77,19 @@ A physics-based simulation of an incandescent light bulb with realistic cord dyn
   - **Rotate**: Pinch to grab and rotate the bulb View.
   - **Toggle**: Pull the cord to switch on/off.
   - **Break**: Aggressive pulls snap the cord (Material Fatigue).
-- [Design Document](docs/DESIGN-LIGHT-BULB.md)
 
-https://github.com/user-attachments/assets/2ede99fe-4c66-451c-a039-e1c1b2bc975c
+### 7. Magnetic Clutter
+
+A satisfyingly chaotic digital toy where magnetic balls form clusters and react to energetic repulsion.
+
+- **Gestures**:
+  - **Repulse**: Right hand fist to spawn a bright repulsor sphere and kick balls away.
+  - **Grab**: Left hand pinch to grab and manipulate individual balls.
+- [Design Document](docs/DESIGN-MAGNETIC-CLUTTER.md)
+
+**Credits**: Inspired by [Gioda's CodePen](https://codepen.io/Gioda34/pen/QwErpzQ) (@gioda123456).
+
+https://github.com/user-attachments/assets/584c39c3-b07c-4872-9b4b-54a90a31370c
 
 ## 🚀 Quick Start
 
@@ -105,6 +115,7 @@ bun validate-build
 - **F**: Switch to Foggy Mirror Mode
 - **S**: Switch to Stellar Wave Mode
 - **L**: Switch to Light Bulb Mode
+- **K**: Switch to Magnetic Clutter Mode
 - **H**: Toggle Hints
 - **D**: Toggle Debug Panel
 - **Esc**: Stop/Dispose
