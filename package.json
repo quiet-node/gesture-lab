@@ -39,24 +39,24 @@
     "@fontsource/nunito": "^5.2.7",
     "@fontsource/playfair-display": "^5.2.8",
     "@lume/three-meshline": "^4.0.5",
-    "@mediapipe/tasks-vision": "^0.10.22-rc.20250304",
+    "@mediapipe/tasks-vision": "^0.10.32",
     "@types/howler": "^2.2.12",
     "@vercel/analytics": "^1.6.1",
     "gsap": "^3.14.2",
     "howler": "^2.2.4",
     "postprocessing": "^6.38.2",
     "three": "^0.182.0",
-    "three-mesh-bvh": "^0.9.7",
+    "three-mesh-bvh": "^0.9.8",
     "typescript": "^5.9.3",
     "vite": "^7.3.1"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.2",
-    "@types/node": "^25.0.9",
+    "@types/node": "^25.2.2",
     "@types/three": "^0.182.0",
     "eslint": "^9.39.2",
-    "prettier": "^3.8.0",
-    "typescript-eslint": "^8.53.1",
-    "vite-plugin-static-copy": "^3.1.6"
+    "prettier": "^3.8.1",
+    "typescript-eslint": "^8.54.0",
+    "vite-plugin-static-copy": "^3.2.0"
   }
 }
