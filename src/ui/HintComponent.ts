@@ -26,6 +26,7 @@ export class HintComponent {
       | 'stellar-wave'
       | 'light-bulb'
       | 'magnetic-clutter'
+      | 'voxel-builder'
   ): void {
     if (!this.element) {
       this.createDOM();
@@ -151,6 +152,39 @@ export class HintComponent {
           </div>
           <div class="hint-row">
             <span class="hint-label">Reset</span>
+            <span class="hint-value">Press <kbd>R</kbd></span>
+          </div>
+        </div>
+      `;
+    } else if (mode === 'voxel-builder') {
+      content.innerHTML = `
+        <div class="hint-header">
+          <span class="hint-title">Voxel Builder</span>
+          <span class="hint-subtitle">Interaction Guide</span>
+        </div>
+        <div class="hint-grid">
+          <div class="hint-row">
+            <span class="hint-label">Draw Boxes</span>
+            <span class="hint-value">Right Pinch + Drag</span>
+          </div>
+          <div class="hint-row">
+            <span class="hint-label">New Chain</span>
+            <span class="hint-value">Release + Re-pinch</span>
+          </div>
+          <div class="hint-row">
+            <span class="hint-label">Rotate View</span>
+            <span class="hint-value">Left Pinch + Drag</span>
+          </div>
+          <div class="hint-row">
+            <span class="hint-label">Erase Mode</span>
+            <span class="hint-value">Hold Left Fist</span>
+          </div>
+          <div class="hint-row">
+            <span class="hint-label">Change Theme</span>
+            <span class="hint-value">Pinky Pinch</span>
+          </div>
+          <div class="hint-row">
+            <span class="hint-label">Clear All</span>
             <span class="hint-value">Press <kbd>R</kbd></span>
           </div>
         </div>

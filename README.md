@@ -79,9 +79,7 @@ A physics-based simulation of an incandescent light bulb with realistic cord dyn
   - **Break**: Aggressive pulls snap the cord (Material Fatigue).
 - [Design Document](docs/DESIGN-LIGHT-BULB.md)
 
-
 https://github.com/user-attachments/assets/3373c54a-1d47-4bad-a508-3b8aca96e399
-
 
 ### 7. Magnetic Clutter
 
@@ -94,6 +92,16 @@ A satisfyingly chaotic digital toy where magnetic balls form clusters and react 
 
 https://github.com/user-attachments/assets/4e17cbdc-5474-4f81-8400-16b7f9376cb0
 
+### 8. Voxel Builder
+
+A spatial computing voxel editor where you sculpt 3D models with your hands in real-time.
+
+- **Gestures**:
+  - **Sculpt**: Right hand pinch to draw voxels.
+  - **Erase**: Left hand fist modifies draw mode to delete voxels.
+  - **Turntable**: Left hand pinch to rotate the sculpture.
+  - **Palette**: Pinky pinch to cycle color themes (Spectrum, Cyberpunk, etc.).
+- [Design Document](docs/DESIGN-VOXEL-BUILDER.md)
 
 ## 🚀 Quick Start
 
@@ -120,6 +128,7 @@ bun validate-build
 - **S**: Switch to Stellar Wave Mode
 - **L**: Switch to Light Bulb Mode
 - **K**: Switch to Magnetic Clutter Mode
+- **V**: Switch to Voxel Builder Mode
 - **H**: Toggle Hints
 - **D**: Toggle Debug Panel
 - **Esc**: Stop/Dispose

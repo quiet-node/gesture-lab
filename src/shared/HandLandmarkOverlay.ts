@@ -104,7 +104,7 @@ export class HandLandmarkOverlay {
       width: 100%;
       height: 100%;
       pointer-events: none;
-      z-index: 5;
+      z-index: 20;
       transform: scaleX(-1);
     `;
     container.appendChild(this.canvas);

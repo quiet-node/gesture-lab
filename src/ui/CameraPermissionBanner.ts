@@ -17,6 +17,7 @@ const MODE_MESSAGES: Record<InteractionMode, string> = {
   'stellar-wave': 'Enable camera for pinch-triggered ripples',
   'light-bulb': 'Enable camera to interact with the light bulb',
   'magnetic-clutter': 'Enable camera to repulse and grab magnetic balls',
+  'voxel-builder': 'Enable camera to build 3D voxel structures with pinch gestures',
 };
 
 export class CameraPermissionBanner {

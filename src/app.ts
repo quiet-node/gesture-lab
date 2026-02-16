@@ -18,6 +18,8 @@ import { LightBulbController } from './light-bulb/LightBulbController';
 import { LightBulbDebugInfo } from './light-bulb/types';
 import { MagneticClutterController } from './magnetic-clutter/MagneticClutterController';
 import { MagneticClutterDebugInfo } from './magnetic-clutter/types';
+import { VoxelBuilderController } from './voxel-builder/VoxelBuilderController';
+import { VoxelBuilderDebugInfo } from './voxel-builder/types';
 import { HandTracker } from './shared/HandTracker';
 import { DebugComponent } from './ui/DebugComponent';
 import { Footer } from './ui/Footer';
@@ -61,6 +63,7 @@ export class App {
   private stellarWaveController: StellarWaveController | null = null;
   private lightBulbController: LightBulbController | null = null;
   private magneticClutterController: MagneticClutterController | null = null;
+  private voxelBuilderController: VoxelBuilderController | null = null;
   private config: AppConfig;
   private currentMode: InteractionMode | null = null;
 
@@ -181,6 +184,8 @@ export class App {
         this.switchToLightBulbMode();
       } else if (mode === 'magnetic-clutter') {
         this.switchToMagneticClutterMode();
+      } else if (mode === 'voxel-builder') {
+        this.switchToVoxelBuilderMode();
       }
     });
 
@@ -271,6 +276,9 @@ export class App {
       } else if (key === 'k') {
         this.switchToMagneticClutterMode();
         return;
+      } else if (key === 'v') {
+        this.switchToVoxelBuilderMode();
+        return;
       }
 
       // Mode specific shortcuts
@@ -290,6 +298,8 @@ export class App {
           this.lightBulbController?.reset();
         } else if (this.currentMode === 'magnetic-clutter') {
           this.magneticClutterController?.reset();
+        } else if (this.currentMode === 'voxel-builder') {
+          this.voxelBuilderController?.reset();
         }
         return;
       }
@@ -372,6 +382,14 @@ export class App {
       this.magneticClutterController.disableDebug();
       this.magneticClutterController.dispose();
       this.magneticClutterController = null;
+    }
+
+    // Stop voxel builder controller
+    if (this.voxelBuilderController) {
+      this.voxelBuilderController.stop();
+      this.voxelBuilderController.disableDebug();
+      this.voxelBuilderController.dispose();
+      this.voxelBuilderController = null;
     }
   }
 
@@ -475,6 +493,8 @@ export class App {
       this.magneticClutterController.enableDebug((info) =>
         this.updateMagneticClutterDebugPanel(info)
       );
+    } else if (this.currentMode === 'voxel-builder' && this.voxelBuilderController) {
+      this.voxelBuilderController.enableDebug((info) => this.updateVoxelBuilderDebugPanel(info));
     }
   }
 
@@ -582,6 +602,9 @@ export class App {
       } else if (this.currentMode === 'magnetic-clutter') {
         const handCount = this.magneticClutterController?.getHandCount() ?? 0;
         this.updateHandStatus(handCount);
+      } else if (this.currentMode === 'voxel-builder') {
+        const handCount = this.voxelBuilderController?.getHandCount() ?? 0;
+        this.updateHandStatus(handCount);
       }
       // Note: foggy-mirror mode has its own update loop in FoggyMirrorController
 
@@ -617,6 +640,7 @@ export class App {
       this.stellarWaveController?.disableDebug();
       this.lightBulbController?.disableDebug();
       this.magneticClutterController?.disableDebug();
+      this.voxelBuilderController?.disableDebug();
     } else {
       if (this.currentMode === 'galaxy' && this.controller) {
         this.controller.enableDebug((info) => this.updateGalaxyDebugPanel(info));
@@ -634,6 +658,8 @@ export class App {
         this.magneticClutterController.enableDebug((info) =>
           this.updateMagneticClutterDebugPanel(info)
         );
+      } else if (this.currentMode === 'voxel-builder' && this.voxelBuilderController) {
+        this.voxelBuilderController.enableDebug((info) => this.updateVoxelBuilderDebugPanel(info));
       }
     }
   }
@@ -686,6 +712,10 @@ export class App {
       // Dark background to match CodePen style
       this.videoElement.style.cssText =
         baseStyles + 'filter: brightness(0.05) contrast(1) saturate(1);';
+    } else if (mode === 'voxel-builder') {
+      // Subtle self-view with enough contrast for voxel visibility
+      this.videoElement.style.cssText =
+        baseStyles + 'filter: brightness(0.25) contrast(0.8) saturate(0.7);';
     } else {
       // Full brightness for foggy-mirror mode
       this.videoElement.style.cssText = baseStyles + 'filter: none;';
@@ -1160,6 +1190,64 @@ export class App {
   }
 
   /**
+   * Switch to voxel builder interaction mode
+   */
+  switchToVoxelBuilderMode(): void {
+    if (this.currentMode === 'voxel-builder') return;
+
+    console.log('[App] Switching to voxel-builder mode');
+
+    this.landingPage?.hide();
+    this.stopCurrentMode();
+
+    if (!this.voxelBuilderController) {
+      this.voxelBuilderController = new VoxelBuilderController(this.handTracker, this.container, {
+        debug: this.config.debug,
+      });
+      this.voxelBuilderController.initialize();
+    }
+
+    this.voxelBuilderController.start();
+
+    this.applyVideoStyles('voxel-builder');
+    this.currentMode = 'voxel-builder';
+    this.state = 'running';
+    this.updateHandStatus(0);
+
+    this.footer?.show();
+    this.hintComponent?.update('voxel-builder');
+    this.hintComponent?.show();
+    this.modeIndicator?.update('voxel-builder');
+
+    this.startAnimationLoop();
+
+    if (!this.handTracker.isCameraEnabled()) {
+      this.cameraPermissionBanner?.show('voxel-builder');
+    }
+
+    if (this.debugComponent?.isVisibleState()) {
+      this.voxelBuilderController.enableDebug((info) => this.updateVoxelBuilderDebugPanel(info));
+    }
+  }
+
+  /**
+   * Update voxel builder debug panel with current telemetry
+   */
+  private updateVoxelBuilderDebugPanel(info: VoxelBuilderDebugInfo): void {
+    if (!this.debugComponent) return;
+
+    this.debugComponent.update(`
+      <div style="margin-bottom: 8px; color: #fff; font-weight: bold;">Debug Info</div>
+      <div>FPS: ${info.fps}</div>
+      <div>Hands: ${info.handsDetected}</div>
+      <div>Boxes: ${info.boxCount}</div>
+      <div>Drawing: ${info.isDrawing ? '<span style="color: #0f0;">YES</span>' : 'No'}</div>
+      <div>Grid: ${info.gridPosition}</div>
+      ${info.performanceWarning ? '<div style="color: #f00; margin-top: 4px;">⚠ Low FPS — spawning paused</div>' : ''}
+    `);
+  }
+
+  /**
    * Clean up and stop the application
    */
   dispose(): void {
@@ -1179,6 +1267,7 @@ export class App {
     this.stellarWaveController?.dispose();
     this.lightBulbController?.dispose();
     this.magneticClutterController?.dispose();
+    this.voxelBuilderController?.dispose();
     this.handTracker.dispose();
     this.galaxyRenderer?.dispose();
     this.deviceBanner?.dispose();

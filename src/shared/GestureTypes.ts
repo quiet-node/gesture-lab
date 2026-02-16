@@ -236,29 +236,29 @@ export interface GestureConfig {
  */
 export const DEFAULT_GESTURE_CONFIG: GestureConfig = {
   pinch: {
-    threshold: 0.06, // Looser for better UX
-    releaseThreshold: 0.1, // More hysteresis
-    cooldownMs: 400, // Reduced cooldown for snappier pulses
+    threshold: 0.035, // Stricter: Requires fingers to be much closer
+    releaseThreshold: 0.06, // Tightened hysteresis
+    cooldownMs: 400,
   },
   middlePinch: {
-    threshold: 0.07, // Looser
-    releaseThreshold: 0.11,
+    threshold: 0.045, // Stricter
+    releaseThreshold: 0.07,
     cooldownMs: 150,
   },
   ringPinch: {
-    threshold: 0.07,
-    releaseThreshold: 0.11,
+    threshold: 0.045,
+    releaseThreshold: 0.07,
     cooldownMs: 150,
   },
   pinkyPinch: {
-    threshold: 0.08, // Significantly looser to ensure detection with smaller fingers
-    releaseThreshold: 0.12, // More hysteresis
+    threshold: 0.055, // Still slightly looser but tighter than before
+    releaseThreshold: 0.08,
     cooldownMs: 200,
   },
   fist: {
-    closeThreshold: 1.2, // Much more lenient detection
-    openThreshold: 1.6, // More hysteresis for stable hold
-    minDurationFrames: 1, // Instant reaction
+    closeThreshold: 1.2,
+    openThreshold: 1.6,
+    minDurationFrames: 1,
   },
 };
 

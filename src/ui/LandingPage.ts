@@ -10,7 +10,8 @@ export type InteractionMode =
   | 'iron-man-workshop'
   | 'stellar-wave'
   | 'light-bulb'
-  | 'magnetic-clutter';
+  | 'magnetic-clutter'
+  | 'voxel-builder';
 
 export class LandingPage {
   private container: HTMLElement;
@@ -129,6 +130,18 @@ export class LandingPage {
                 <p>Force Field Physics</p>
               </div>
               <div class="key-indicator">k</div>
+            </div>
+          </button>
+
+          <button class="portal-card voxel-card" data-mode="voxel-builder">
+            <div class="card-glass"></div>
+            <div class="card-content">
+              <div class="card-icon">🧱</div>
+              <div class="card-info">
+                <h3>Voxel Builder</h3>
+                <p>Build in 3D Space</p>
+              </div>
+              <div class="key-indicator">v</div>
             </div>
           </button>
         </div>
@@ -389,6 +402,7 @@ export class LandingPage {
       .stellar-card:hover .card-glass { box-shadow: 0 0 30px rgba(100, 200, 255, 0.15); }
       .bulb-card:hover .card-glass { box-shadow: 0 0 30px rgba(255, 244, 224, 0.15); }
       .clutter-card:hover .card-glass { box-shadow: 0 0 30px rgba(255, 50, 50, 0.15); }
+      .voxel-card:hover .card-glass { box-shadow: 0 0 30px rgba(0, 200, 120, 0.15); }
 
       /* Animation Delays */
       .portal-card:nth-child(1) { animation-delay: 0.1s; }
@@ -398,6 +412,7 @@ export class LandingPage {
       .portal-card:nth-child(5) { animation-delay: 0.3s; }
       .portal-card:nth-child(6) { animation-delay: 0.35s; }
       .portal-card:nth-child(7) { animation-delay: 0.4s; }
+      .portal-card:nth-child(8) { animation-delay: 0.45s; }
 
       @keyframes fadeUp {
         from { opacity: 0; transform: translateY(20px); }
