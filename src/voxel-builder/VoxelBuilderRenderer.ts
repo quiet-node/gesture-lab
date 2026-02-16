@@ -314,8 +314,11 @@ export class VoxelBuilderRenderer {
     this._matrix.makeTranslation(pos.x, pos.y, pos.z);
     this.instancedMesh.setMatrixAt(idx, this._matrix);
 
-    // Assign initial color (will be overridden by updateAllColors)
-    this.instancedMesh.setColorAt(idx, this._color.set(0xffffff));
+    // Calculate and set color for this specific voxel
+    // We do NOT update all other voxels — they keep their existing colors
+    // to prevent the "shifting gradient" effect as the build grows.
+    const { minY, maxY } = this.grid.getYRange();
+    this.instancedMesh.setColorAt(idx, this.calculateVoxelColor(gy, minY, maxY));
 
     this.instanceCount++;
     this.instancedMesh.count = this.instanceCount;
@@ -331,9 +334,6 @@ export class VoxelBuilderRenderer {
     this.edgeGroup.add(edge);
 
     this.boxes.push({ gx, gy, gz, instanceIndex: idx });
-
-    // Re-color everything so the gradient stays consistent
-    this.updateAllColors();
   }
 
   /**
@@ -344,20 +344,12 @@ export class VoxelBuilderRenderer {
    */
   updateAllColors(): void {
     const { minY, maxY } = this.grid.getYRange();
-    const range = maxY - minY;
-    const [bH, bS, bL] = this.palette.bottomHSL;
-    const [tH, tS, tL] = this.palette.topHSL;
 
     for (const box of this.boxes) {
-      const t = range === 0 ? 0.5 : (box.gy - minY) / range;
-
-      // Lerp between bottom and top HSL
-      const h = bH + (tH - bH) * t;
-      const s = bS + (tS - bS) * t;
-      const l = bL + (tL - bL) * t;
-      this._color.setHSL(h, s, l);
-
-      this.instancedMesh.setColorAt(box.instanceIndex, this._color);
+      this.instancedMesh.setColorAt(
+        box.instanceIndex,
+        this.calculateVoxelColor(box.gy, minY, maxY)
+      );
     }
 
     if (this.instancedMesh.instanceColor) {
@@ -416,9 +408,29 @@ export class VoxelBuilderRenderer {
       this.edgeGroup.remove(edgeChild);
     }
 
-    // Re-color after removal to adjust gradient
-    this.updateAllColors();
+    // Note: We do NOT re-color after removal.
+    // Existing blocks keep their colors even if the gradient range technically changes.
     return true;
+  }
+
+  /**
+   * Calculate the color for a voxel at a given height based on the current palette
+   * and the provided vertical range.
+   */
+  private calculateVoxelColor(gy: number, minY: number, maxY: number): THREE.Color {
+    const range = maxY - minY;
+    // Avoid division by zero for the first block
+    const t = range === 0 ? 0.0 : (gy - minY) / range;
+
+    const [bH, bS, bL] = this.palette.bottomHSL;
+    const [tH, tS, tL] = this.palette.topHSL;
+
+    // Lerp between bottom and top HSL
+    const h = bH + (tH - bH) * t;
+    const s = bS + (tS - bS) * t;
+    const l = bL + (tL - bL) * t;
+
+    return this._color.setHSL(h, s, l);
   }
 
   /**
