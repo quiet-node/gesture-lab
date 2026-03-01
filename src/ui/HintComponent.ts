@@ -27,6 +27,7 @@ export class HintComponent {
       | 'light-bulb'
       | 'magnetic-clutter'
       | 'voxel-builder'
+      | 'visual-recognition'
   ): void {
     if (!this.element) {
       this.createDOM();
@@ -189,6 +190,27 @@ export class HintComponent {
           </div>
         </div>
       `;
+    } else if (mode === 'visual-recognition') {
+      content.innerHTML = `
+        <div class="hint-header">
+          <span class="hint-title">Visual Recognition</span>
+          <span class="hint-subtitle">Detection Guide</span>
+        </div>
+        <div class="hint-grid">
+          <div class="hint-row">
+            <span class="hint-label">Detect</span>
+            <span class="hint-value">Hold objects to camera</span>
+          </div>
+          <div class="hint-row">
+            <span class="hint-label">Intelligence</span>
+            <span class="hint-value">Pre-trained COCO Model</span>
+          </div>
+        </div>
+        <div class="hint-info-note">
+          <span>Recognizes 80 specific common objects.</span>
+          <a href="https://cocodataset.org/#explore" target="_blank" rel="noopener">View Official List →</a>
+        </div>
+      `;
     } else {
       content.innerHTML = `
         <div class="hint-header">
@@ -316,7 +338,7 @@ export class HintComponent {
         color: #fff;
         font-family: 'Nunito', sans-serif;
         border-radius: 4px; /* Sharper corners for tech look */
-        width: 270px;
+        width: 310px;
         box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(0, 255, 255, 0.15); /* Cyan border glow */
         transition: all 0.6s cubic-bezier(0.2, 0.8, 0.2, 1);
         overflow: hidden;
@@ -483,6 +505,34 @@ export class HintComponent {
         height: 4px;
         background: rgba(0, 255, 255, 0.5); /* Cyan dots */
         border-radius: 50%;
+      }
+
+      .hint-info-note {
+        margin-top: 24px;
+        padding-top: 16px;
+        border-top: 1px solid rgba(255, 255, 255, 0.08);
+        font-size: 0.68rem;
+        color: rgba(255, 255, 255, 0.4);
+        line-height: 1.5;
+        letter-spacing: 0.01em;
+      }
+
+      .hint-info-note span {
+        display: block;
+        margin-bottom: 4px;
+      }
+
+      .hint-info-note a {
+        display: inline-block;
+        color: rgba(0, 255, 255, 0.7);
+        text-decoration: none;
+        font-weight: 600;
+        transition: all 0.2s ease;
+      }
+
+      .hint-info-note a:hover {
+        color: #fff;
+        text-decoration: underline;
       }
 
       .hint-footer {

@@ -16,6 +16,7 @@ Live Demo: https://gesturelab.icu
 - [TypeScript](https://www.typescriptlang.org/) - Type-safe development
 - [Three.js](https://threejs.org/) - 3D rendering engine
 - [MediaPipe Tasks Vision](https://ai.google.dev/edge/mediapipe/solutions/vision/hand_landmarker) - Real-time hand tracking
+- [inferencejs](https://github.com/roboflow/inferencejs) - Real-time client-side object detection
 - [Vite](https://vitejs.dev/) - Next Generation Frontend Tooling
 
 ## 🧪 Experiments
@@ -103,9 +104,15 @@ A spatial computing voxel editor where you sculpt 3D models with your hands in r
   - **Palette**: Pinky pinch to cycle color themes (Spectrum, Cyberpunk, etc.).
 - [Design Document](docs/DESIGN-VOXEL-BUILDER.md)
 
-
 https://github.com/user-attachments/assets/abf2ef4f-428b-492a-8b06-7970b4a1f5d7
 
+### 9. Visual Recognition
+
+A real-time object detection experiment that runs entirely inside your browser for maximum privacy and performance.
+
+- **Capabilities**: Recognizes 80 common objects (people, phones, laptops, etc.) using the COCO dataset.
+- **Tech**: YOLOv8n (Nano) architecture with WebGL GPU acceleration and background Web Worker isolation.
+- [Design Document](docs/DESIGN-VISUAL-RECOGNITION.md)
 
 ## 🚀 Quick Start
 
@@ -133,6 +140,7 @@ bun validate-build
 - **L**: Switch to Light Bulb Mode
 - **K**: Switch to Magnetic Clutter Mode
 - **V**: Switch to Voxel Builder Mode
+- **O**: Switch to Visual Recognition Mode
 - **H**: Toggle Hints
 - **D**: Toggle Debug Panel
 - **Esc**: Stop/Dispose

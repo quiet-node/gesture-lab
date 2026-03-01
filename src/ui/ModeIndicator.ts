@@ -29,6 +29,7 @@ export class ModeIndicator {
       | 'light-bulb'
       | 'magnetic-clutter'
       | 'voxel-builder'
+      | 'visual-recognition'
   ): void {
     if (!this.element) {
       this.createDOM();
@@ -54,7 +55,9 @@ export class ModeIndicator {
                   ? 'Magnetic Clutter'
                   : mode === 'voxel-builder'
                     ? 'Voxel Builder'
-                    : 'Foggy Mirror';
+                    : mode === 'visual-recognition'
+                      ? 'Visual Recognition'
+                      : 'Foggy Mirror';
 
     content.innerHTML = `
       <div class="current-mode">${modeName}</div>
