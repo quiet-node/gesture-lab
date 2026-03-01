@@ -11,7 +11,8 @@ export type InteractionMode =
   | 'stellar-wave'
   | 'light-bulb'
   | 'magnetic-clutter'
-  | 'voxel-builder';
+  | 'voxel-builder'
+  | 'visual-recognition';
 
 export class LandingPage {
   private container: HTMLElement;
@@ -142,6 +143,18 @@ export class LandingPage {
                 <p>Build in 3D Space</p>
               </div>
               <div class="key-indicator">v</div>
+            </div>
+          </button>
+
+          <button class="portal-card recognition-card" data-mode="visual-recognition">
+            <div class="card-glass"></div>
+            <div class="card-content">
+              <div class="card-icon">🔍</div>
+              <div class="card-info">
+                <h3>Visual Recognition</h3>
+                <p>Real-time Object Detection</p>
+              </div>
+              <div class="key-indicator">o</div>
             </div>
           </button>
         </div>
@@ -403,6 +416,7 @@ export class LandingPage {
       .bulb-card:hover .card-glass { box-shadow: 0 0 30px rgba(255, 244, 224, 0.15); }
       .clutter-card:hover .card-glass { box-shadow: 0 0 30px rgba(255, 50, 50, 0.15); }
       .voxel-card:hover .card-glass { box-shadow: 0 0 30px rgba(0, 200, 120, 0.15); }
+      .recognition-card:hover .card-glass { box-shadow: 0 0 30px rgba(0, 255, 150, 0.15); }
 
       /* Animation Delays */
       .portal-card:nth-child(1) { animation-delay: 0.1s; }
@@ -413,6 +427,7 @@ export class LandingPage {
       .portal-card:nth-child(6) { animation-delay: 0.35s; }
       .portal-card:nth-child(7) { animation-delay: 0.4s; }
       .portal-card:nth-child(8) { animation-delay: 0.45s; }
+      .portal-card:nth-child(9) { animation-delay: 0.5s; }
 
       @keyframes fadeUp {
         from { opacity: 0; transform: translateY(20px); }

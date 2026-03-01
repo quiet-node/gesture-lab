@@ -18,6 +18,7 @@ const MODE_MESSAGES: Record<InteractionMode, string> = {
   'light-bulb': 'Enable camera to interact with the light bulb',
   'magnetic-clutter': 'Enable camera to repulse and grab magnetic balls',
   'voxel-builder': 'Enable camera to build 3D voxel structures with pinch gestures',
+  'visual-recognition': 'Enable camera for real-time object detection',
 };
 
 export class CameraPermissionBanner {

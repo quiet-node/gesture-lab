@@ -103,9 +103,7 @@ A spatial computing voxel editor where you sculpt 3D models with your hands in r
   - **Palette**: Pinky pinch to cycle color themes (Spectrum, Cyberpunk, etc.).
 - [Design Document](docs/DESIGN-VOXEL-BUILDER.md)
 
-
 https://github.com/user-attachments/assets/abf2ef4f-428b-492a-8b06-7970b4a1f5d7
-
 
 ## 🚀 Quick Start
 
