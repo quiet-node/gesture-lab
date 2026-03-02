@@ -20,6 +20,8 @@ import { MagneticClutterController } from './magnetic-clutter/MagneticClutterCon
 import { MagneticClutterDebugInfo } from './magnetic-clutter/types';
 import { VoxelBuilderController } from './voxel-builder/VoxelBuilderController';
 import { VoxelBuilderDebugInfo } from './voxel-builder/types';
+import { VisualRecognitionController } from './visual-recognition/VisualRecognitionController';
+import type { VisualRecognitionDebugInfo } from './visual-recognition/types';
 import { HandTracker } from './shared/HandTracker';
 import { DebugComponent } from './ui/DebugComponent';
 import { Footer } from './ui/Footer';
@@ -64,6 +66,7 @@ export class App {
   private lightBulbController: LightBulbController | null = null;
   private magneticClutterController: MagneticClutterController | null = null;
   private voxelBuilderController: VoxelBuilderController | null = null;
+  private visualRecognitionController: VisualRecognitionController | null = null;
   private config: AppConfig;
   private currentMode: InteractionMode | null = null;
 
@@ -186,6 +189,8 @@ export class App {
         this.switchToMagneticClutterMode();
       } else if (mode === 'voxel-builder') {
         this.switchToVoxelBuilderMode();
+      } else if (mode === 'visual-recognition') {
+        this.switchToVisualRecognitionMode();
       }
     });
 
@@ -279,6 +284,9 @@ export class App {
       } else if (key === 'v') {
         this.switchToVoxelBuilderMode();
         return;
+      } else if (key === 'o') {
+        this.switchToVisualRecognitionMode();
+        return;
       }
 
       // Mode specific shortcuts
@@ -300,6 +308,8 @@ export class App {
           this.magneticClutterController?.reset();
         } else if (this.currentMode === 'voxel-builder') {
           this.voxelBuilderController?.reset();
+        } else if (this.currentMode === 'visual-recognition') {
+          this.visualRecognitionController?.reset();
         }
         return;
       }
@@ -390,6 +400,14 @@ export class App {
       this.voxelBuilderController.disableDebug();
       this.voxelBuilderController.dispose();
       this.voxelBuilderController = null;
+    }
+
+    // Stop visual recognition controller
+    if (this.visualRecognitionController) {
+      this.visualRecognitionController.stop();
+      this.visualRecognitionController.disableDebug();
+      this.visualRecognitionController.dispose();
+      this.visualRecognitionController = null;
     }
   }
 
@@ -495,6 +513,10 @@ export class App {
       );
     } else if (this.currentMode === 'voxel-builder' && this.voxelBuilderController) {
       this.voxelBuilderController.enableDebug((info) => this.updateVoxelBuilderDebugPanel(info));
+    } else if (this.currentMode === 'visual-recognition' && this.visualRecognitionController) {
+      this.visualRecognitionController.enableDebug((info) =>
+        this.updateVisualRecognitionDebugPanel(info)
+      );
     }
   }
 
@@ -605,6 +627,8 @@ export class App {
       } else if (this.currentMode === 'voxel-builder') {
         const handCount = this.voxelBuilderController?.getHandCount() ?? 0;
         this.updateHandStatus(handCount);
+      } else if (this.currentMode === 'visual-recognition') {
+        // Visual Recognition does not use hand tracking; status handled by its own controller
       }
       // Note: foggy-mirror mode has its own update loop in FoggyMirrorController
 
@@ -641,6 +665,7 @@ export class App {
       this.lightBulbController?.disableDebug();
       this.magneticClutterController?.disableDebug();
       this.voxelBuilderController?.disableDebug();
+      this.visualRecognitionController?.disableDebug();
     } else {
       if (this.currentMode === 'galaxy' && this.controller) {
         this.controller.enableDebug((info) => this.updateGalaxyDebugPanel(info));
@@ -660,6 +685,10 @@ export class App {
         );
       } else if (this.currentMode === 'voxel-builder' && this.voxelBuilderController) {
         this.voxelBuilderController.enableDebug((info) => this.updateVoxelBuilderDebugPanel(info));
+      } else if (this.currentMode === 'visual-recognition' && this.visualRecognitionController) {
+        this.visualRecognitionController.enableDebug((info) =>
+          this.updateVisualRecognitionDebugPanel(info)
+        );
       }
     }
   }
@@ -716,6 +745,9 @@ export class App {
       // Subtle self-view with enough contrast for voxel visibility
       this.videoElement.style.cssText =
         baseStyles + 'filter: brightness(0.25) contrast(0.8) saturate(0.7);';
+    } else if (mode === 'visual-recognition') {
+      // Near-full brightness so the user can clearly see themselves and objects
+      this.videoElement.style.cssText = baseStyles + 'filter: brightness(0.95) contrast(1.1);';
     } else {
       // Full brightness for foggy-mirror mode
       this.videoElement.style.cssText = baseStyles + 'filter: none;';
@@ -1248,6 +1280,82 @@ export class App {
   }
 
   /**
+   * Switch to visual recognition interaction mode.
+   * Unlike other modes, Visual Recognition does not use HandTracker —
+   * it uses Roboflow inferencejs for object detection on the video feed.
+   */
+  async switchToVisualRecognitionMode(): Promise<void> {
+    if (this.currentMode === 'visual-recognition') return;
+
+    console.log('[App] Switching to visual-recognition mode');
+
+    this.landingPage?.hide();
+    this.stopCurrentMode();
+    this.applyVideoStyles('visual-recognition');
+
+    if (!this.visualRecognitionController) {
+      this.updateStatus('Loading Visual Recognition Model...', 'loading');
+      this.visualRecognitionController = new VisualRecognitionController(
+        this.videoElement!,
+        this.container,
+        { debug: this.config.debug }
+      );
+
+      try {
+        await this.visualRecognitionController.initialize();
+        this.updateStatus('Visual Recognition Ready', 'ready');
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        console.error('[App] Visual recognition initialization failed:', message);
+        this.updateStatus(`Model error: ${message}`, 'error');
+        this.visualRecognitionController.dispose();
+        this.visualRecognitionController = null;
+        return;
+      }
+    }
+
+    this.visualRecognitionController.start();
+
+    this.currentMode = 'visual-recognition';
+    this.state = 'running';
+
+    this.footer?.show();
+    this.hintComponent?.update('visual-recognition');
+    this.hintComponent?.show();
+    this.modeIndicator?.update('visual-recognition');
+
+    this.startAnimationLoop();
+
+    // Visual Recognition uses its own camera access via the shared video element,
+    // but still requires camera permission
+    if (!this.handTracker.isCameraEnabled()) {
+      this.cameraPermissionBanner?.show('visual-recognition');
+    }
+
+    if (this.debugComponent?.isVisibleState()) {
+      this.visualRecognitionController.enableDebug((info) =>
+        this.updateVisualRecognitionDebugPanel(info)
+      );
+    }
+  }
+
+  /**
+   * Update visual recognition debug panel with detection telemetry
+   */
+  private updateVisualRecognitionDebugPanel(info: VisualRecognitionDebugInfo): void {
+    if (!this.debugComponent) return;
+
+    this.debugComponent.update(`
+      <div style="margin-bottom: 8px; color: #fff; font-weight: bold;">Debug Info</div>
+      <div>FPS: ${info.fps.toFixed(1)}</div>
+      <div>Detections: ${info.detectionCount}</div>
+      <div>Inference: ${info.inferenceTimeMs.toFixed(0)} ms</div>
+      <div>Model: ${info.modelReady ? '<span style="color: #0f0;">Ready</span>' : '<span style="color: #f00;">Loading</span>'}</div>
+      <div>Total Frames: ${info.totalFrames}</div>
+    `);
+  }
+
+  /**
    * Clean up and stop the application
    */
   dispose(): void {
@@ -1268,6 +1376,7 @@ export class App {
     this.lightBulbController?.dispose();
     this.magneticClutterController?.dispose();
     this.voxelBuilderController?.dispose();
+    this.visualRecognitionController?.dispose();
     this.handTracker.dispose();
     this.galaxyRenderer?.dispose();
     this.deviceBanner?.dispose();

@@ -44,6 +44,7 @@
     "@vercel/analytics": "^1.6.1",
     "gsap": "^3.14.2",
     "howler": "^2.2.4",
+    "inferencejs": "^1.2.3",
     "postprocessing": "^6.38.2",
     "three": "^0.182.0",
     "three-mesh-bvh": "^0.9.8",
