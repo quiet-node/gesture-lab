@@ -114,6 +114,11 @@ A real-time object detection experiment that runs entirely inside your browser f
 - **Tech**: YOLOv8n (Nano) architecture with WebGL GPU acceleration and background Web Worker isolation.
 - [Design Document](docs/DESIGN-VISUAL-RECOGNITION.md)
 
+
+https://github.com/user-attachments/assets/f0b4495b-e250-4b60-851b-c0cb44451326
+
+
+
 ## 🚀 Quick Start
 
 ```bash
